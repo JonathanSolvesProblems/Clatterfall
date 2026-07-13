@@ -1,0 +1,17 @@
+node_modules
+.DS_Store
+dist
+.env
+*.tsbuildinfo
+
+# Local dev artifacts
+tools/shots
+
+# Devpost submission draft (contains personal handles and unpublished links)
+submission.md
+
+# Editor / assistant tooling
+.claude/
+.cursor/
+.idea/
+*.log

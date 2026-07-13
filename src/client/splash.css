@@ -1,0 +1,92 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --paper: #efe6d2;
+  --paperHi: #f7f0de;
+  --ink: #2e2a24;
+  --ink2: #6b6152;
+  --brass: #c88a34;
+  --brassDark: #8a5a1c;
+}
+
+body {
+  font-family: 'Hanken Grotesk', system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ink);
+}
+
+.wrap {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  overflow: hidden;
+  background: radial-gradient(125% 90% at 28% 8%, var(--paperHi), var(--paper));
+}
+
+.motif {
+  width: 104px;
+  height: 104px;
+  filter: drop-shadow(2px 4px 3px rgba(46, 42, 36, 0.18));
+}
+
+.title {
+  font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.title .part {
+  color: var(--brass);
+}
+
+.stat {
+  font-family: 'DM Mono', 'SFMono-Regular', 'Courier New', monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.3px;
+  color: var(--brassDark);
+}
+
+.hook {
+  max-width: 440px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink2);
+}
+
+.cta {
+  margin-top: 8px;
+  background: var(--brass);
+  color: var(--paperHi);
+  border: none;
+  border-radius: 14px;
+  padding: 13px 28px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(138, 90, 28, 0.55);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.cta:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(138, 90, 28, 0.55);
+}
+
+.foot {
+  position: absolute;
+  bottom: 12px;
+  font-size: 11px;
+  color: var(--ink2);
+  opacity: 0.7;
+}

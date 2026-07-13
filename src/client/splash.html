@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" type="text/css" href="splash.css" />
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width, height=device-height, user-scalable=0"
+    />
+    <title>Clatterfall</title>
+  </head>
+  <body>
+    <div class="wrap">
+      <svg class="motif" viewBox="0 0 120 120" aria-hidden="true">
+        <rect x="18" y="30" width="46" height="10" rx="4" transform="rotate(20 41 35)" fill="#C99A5B" />
+        <rect x="58" y="62" width="46" height="10" rx="4" transform="rotate(-20 81 67)" fill="#C99A5B" />
+        <rect x="26" y="92" width="46" height="10" rx="4" transform="rotate(16 49 97)" fill="#C99A5B" />
+        <circle cx="34" cy="22" r="10" fill="#A32D14" />
+        <circle cx="34" cy="22" r="8" fill="#E4572E" />
+        <circle cx="31" cy="19" r="3" fill="#FFD9B0" />
+      </svg>
+      <h1 class="title">One More <span class="part">Part</span></h1>
+      <div class="stat" id="stat">a machine the whole community builds</div>
+      <p class="hook">
+        The whole subreddit is building <b>one</b> giant marble machine, one part
+        per person, per day. Every morning the marble runs the <i>entire</i> thing.
+        Add your part and see how far it carries tomorrow.
+      </p>
+      <button class="cta" id="start-button">Open the machine ▸</button>
+      <div class="foot" id="foot"></div>
+    </div>
+    <script type="module" src="splash.ts" defer></script>
+  </body>
+</html>
