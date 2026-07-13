@@ -2,7 +2,7 @@ import { Scene } from 'phaser';
 import type Phaser from 'phaser';
 import type { RunResponse, StateResponse } from '../../shared/api';
 import type { CollisionEvent, Keyframe } from '../../shared/types';
-import { CELL, MARBLE_RADIUS } from '../../shared/constants';
+import { CELL, MARBLE_RADIUS, WORLD_WIDTH } from '../../shared/constants';
 import { cellCenter, parseCell } from '../../shared/geometry';
 import { COLORS } from '../../shared/theme';
 import { BoardView } from '../render/board';
@@ -21,6 +21,7 @@ export class Run extends Scene {
   private synth!: Synth;
   private marbleG!: Phaser.GameObjects.Graphics;
   private fxG!: Phaser.GameObjects.Graphics;
+  private recordLineG?: Phaser.GameObjects.Graphics;
 
   private kfs: Keyframe[] = [];
   private evts: CollisionEvent[] = [];
@@ -36,12 +37,16 @@ export class Run extends Scene {
   private preview = false;
   private trail: { x: number; y: number }[] = [];
 
+  /** How far above the record the run starts playing in slow motion. */
+  private static readonly DRAMA_WINDOW = CELL * 2.4;
+
   constructor() {
     super('Run');
   }
 
   /** Scenes are singletons, so reset all replay state on each (re)entry. */
   init(): void {
+    this.recordLineG = undefined;
     this.kfs = [];
     this.evts = [];
     this.totalT = 1;
@@ -74,6 +79,7 @@ export class Run extends Scene {
 
     this.board = new BoardView(this);
     this.board.drawBoard(this.run.cells, deepestOf(this.run.cells), this.run.season);
+    this.drawRecordLine();
     this.fxG = this.add.graphics();
     this.marbleG = this.add.graphics();
     this.board.addToLayer(this.fxG);
@@ -164,6 +170,40 @@ export class Run extends Scene {
     }
   }
 
+  /**
+   * The line to beat, drawn across the shaft at the depth the machine reached on
+   * its best day. Without it the record is just a number in the corner and the
+   * closing seconds of the run read as "the marble stopped". With it, you can see
+   * him running out of machine.
+   */
+  private drawRecordLine(): void {
+    const rec = this.run.prevRecord;
+    if (rec <= 0) return;
+    const g = this.add.graphics();
+    g.lineStyle(3, COLORS.pip, 0.55);
+    for (let x = 4; x < WORLD_WIDTH - 4; x += 22) {
+      g.lineBetween(x, rec, Math.min(x + 12, WORLD_WIDTH - 4), rec);
+    }
+    g.fillStyle(COLORS.pip, 0.75);
+    g.fillTriangle(0, rec - 7, 9, rec, 0, rec + 7);
+    this.board.addToLayer(g); // added before fx + marble, so Pip crosses over it
+    this.recordLineG = g;
+  }
+
+  /**
+   * How close Pip is to the line, 0 (nowhere near) to 1 (right on it). This is the
+   * dramatic clock of the whole game: it dilates time and leans the camera in as he
+   * closes on the record, so the moment the community is waiting for actually plays
+   * like a moment instead of scrolling past at constant speed.
+   */
+  private tension(y: number): number {
+    const rec = this.run.prevRecord;
+    if (this.reduced || rec <= 0 || this.recordBroken) return 0;
+    const togo = rec - y;
+    if (togo < 0 || togo > Run.DRAMA_WINDOW) return 0;
+    return 1 - togo / Run.DRAMA_WINDOW;
+  }
+
   private drawMarbleAt(x: number, y: number): void {
     const g = this.marbleG;
     g.clear();
@@ -183,6 +223,19 @@ export class Run extends Scene {
     if (this.recordBroken) return;
     this.recordBroken = true;
     if (!this.reduced) this.cameras.main.shake(220, 0.008);
+    // The line he just beat snaps and falls away.
+    const line = this.recordLineG;
+    if (line && !this.reduced) {
+      this.tweens.add({
+        targets: line,
+        alpha: 0,
+        y: line.y + 26,
+        duration: 520,
+        ease: 'Cubic.in',
+        onComplete: () => line.destroy(),
+      });
+      this.recordLineG = undefined;
+    }
     const flash = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, COLORS.paperHi, 0.5).setDepth(70);
     this.tweens.add({ targets: flash, alpha: 0, duration: 320, onComplete: () => flash.destroy() });
     this.synth.record();
@@ -221,7 +274,15 @@ export class Run extends Scene {
     for (const id of this.state.user.yourCells ?? []) yourPx += contrib[id] ?? 0;
 
     this.time.delayedCall(900, () => {
-      this.hud.showResult(this.run.state, this.run.reach, this.run.record, yourPx, () => this.done(), this.preview);
+      this.hud.showResult(
+        this.run.state,
+        this.run.reach,
+        this.run.record,
+        yourPx,
+        () => this.done(),
+        this.preview,
+        this.run.topContributors ?? []
+      );
     });
   }
 
@@ -261,13 +322,19 @@ export class Run extends Scene {
 
   override update(_time: number, delta: number): void {
     if (this.finished || this.elapsed === 0) return;
-    this.elapsed += delta;
+
+    // Dilate time and lean the camera in as Pip closes on the record. Playback is
+    // the only thing that slows: the simulation already happened on the server and
+    // is immutable, so this changes how the run FEELS, never what it says.
+    const k = this.tension(this.maxDepthSeen);
+    this.elapsed += delta * (1 - 0.62 * k);
+
     const progress = Math.min(1, this.elapsed / this.playDuration);
     const simT = progress * this.totalT;
     const kf = this.sample(simT);
     this.fireEventsUpTo(simT);
     this.drawMarbleAt(kf.x, kf.y);
-    this.board.setFocus(kf.y, 0.48);
+    this.board.setFocus(kf.y, 0.48 - 0.11 * k);
 
     if (kf.y > this.maxDepthSeen) this.maxDepthSeen = kf.y;
     this.hud.setDepth(Math.round(this.maxDepthSeen), this.run.prevRecord, this.run.goal);

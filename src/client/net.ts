@@ -2,6 +2,7 @@
 import type {
   PlaceRequest,
   PlaceResponse,
+  RemoveResponse,
   RunResponse,
   StateResponse,
   VoteResponse,
@@ -31,5 +32,6 @@ export const net = {
   place: (req: PlaceRequest) => postJson<PlaceResponse>('/api/place', req),
   vote: (c: number, r: number, dir: 1 | -1) =>
     postJson<VoteResponse>('/api/vote', { c, r, dir }),
+  remove: (c: number, r: number) => postJson<RemoveResponse>('/api/remove', { c, r }),
   watched: (date: string) => postJson<{ ok: boolean }>('/api/watched', { date }),
 };

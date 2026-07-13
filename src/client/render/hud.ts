@@ -5,9 +5,12 @@
  * mono for the gauge readouts). No bundled fonts.
  */
 import * as Phaser from 'phaser';
-import type { CliffhangerState } from '../../shared/types';
+import type { CliffhangerState, Contributor } from '../../shared/types';
 import { COLORS, css } from '../../shared/theme';
 import { MONO, SANS, SERIF } from './fonts';
+
+/** Drawn CTA icons. Never a text glyph: those render from the OS font. */
+export type CtaIcon = 'none' | 'play' | 'check';
 
 const fmt = (n: number): string => Math.round(n).toLocaleString('en-US');
 
@@ -37,6 +40,8 @@ export class Hud {
   private record = 0;
   private goal = 1;
   private onCta: (() => void) | undefined = undefined;
+  private ctaIcon: CtaIcon = 'none';
+  private ctaEnabled = true;
   private onSec: (() => void) | undefined = undefined;
   private hasStreak = false;
   private rulerX = 0;
@@ -207,6 +212,28 @@ export class Hud {
       this.ctaBg.fillStyle(COLORS.brassHi, 1);
       this.ctaBg.fillRoundedRect(-bw / 2, -bh / 2, bw, 4, 2);
     }
+
+    // Icons are drawn, never "▶" / "✓" glyphs. Text glyphs render from the OS font
+    // and are the same class of tell as an emoji icon, and the whole game is
+    // otherwise drawn from primitives.
+    const icon = this.ctaText.text ? this.ctaIcon : 'none';
+    this.ctaText.setX(icon === 'none' ? 0 : 11);
+    if (icon !== 'none') {
+      const tint = this.ctaEnabled ? COLORS.paperHi : COLORS.ink;
+      const bx = 11 - this.ctaText.width / 2 - 17;
+      if (icon === 'play') {
+        this.ctaBg.fillStyle(tint, 1);
+        this.ctaBg.fillTriangle(bx, -7, bx, 7, bx + 11, 0);
+      } else {
+        this.ctaBg.lineStyle(2.5, tint, 1);
+        this.ctaBg.beginPath();
+        this.ctaBg.moveTo(bx, 0);
+        this.ctaBg.lineTo(bx + 4, 5);
+        this.ctaBg.lineTo(bx + 12, -6);
+        this.ctaBg.strokePath();
+      }
+    }
+
     this.cta.setPosition(cx, cy);
     this.cta.setInteractive(
       new Phaser.Geom.Rectangle(-bw / 2, -bh / 2, bw, bh),
@@ -214,7 +241,9 @@ export class Hud {
     );
   }
 
-  setCta(text: string, onClick?: () => void, enabled = true): void {
+  setCta(text: string, onClick?: () => void, enabled = true, icon: CtaIcon = 'none'): void {
+    this.ctaIcon = icon;
+    this.ctaEnabled = enabled;
     this.ctaText.setText(text);
     // The non-clickable states here are coaching ("Tap a glowing cell") and the
     // countdown, both must stay readable, so use ink rather than disabled grey.
@@ -252,17 +281,25 @@ export class Hud {
     record: number,
     yourPx: number,
     onClose: () => void,
-    preview = false
+    preview = false,
+    contributors: Contributor[] = []
   ): void {
     this.resultCard?.destroy();
     const s = this.scene;
     const width = Math.min(this.w - 32, 360);
-    const height = 150;
+
+    // Name the redditors whose parts actually carried the marble today. The credits
+    // sum exactly to the reach, so these numbers are literal, not a popularity score.
+    const rows = contributors.slice(0, 3);
+    const extra = rows.length ? 30 + rows.length * 19 : 0;
+    const height = 150 + extra;
+    const top = -height / 2;
+
     const g = s.add.graphics();
     g.fillStyle(COLORS.paperHi, 1);
-    g.fillRoundedRect(-width / 2, -height / 2, width, height, 18);
+    g.fillRoundedRect(-width / 2, top, width, height, 18);
     g.lineStyle(3, COLORS.brass, 1);
-    g.strokeRoundedRect(-width / 2, -height / 2, width, height, 18);
+    g.strokeRoundedRect(-width / 2, top, width, height, 18);
 
     const head = preview ? { title: 'Preview run', color: COLORS.brassDark } : RESULT_HEAD[state];
     const subText = preview
@@ -271,24 +308,49 @@ export class Hud {
         ? `your part carried it +${fmt(yourPx)} px`
         : `record ${fmt(record)} px`;
     const headText = s.add
-      .text(0, -height / 2 + 22, head.title, { fontFamily: SERIF, fontSize: '26px', color: css(head.color), fontStyle: 'bold' })
+      .text(0, top + 22, head.title, { fontFamily: SERIF, fontSize: '26px', color: css(head.color), fontStyle: 'bold' })
       .setOrigin(0.5);
-    const big = s.add.text(0, -6, `${fmt(reach)} px deep`, { fontFamily: MONO, fontSize: '24px', color: css(COLORS.ink) }).setOrigin(0.5);
+    const big = s.add.text(0, top + 69, `${fmt(reach)} px deep`, { fontFamily: MONO, fontSize: '24px', color: css(COLORS.ink) }).setOrigin(0.5);
     const sub = s.add
-      .text(0, 26, subText, {
+      .text(0, top + 101, subText, {
         fontFamily: SANS,
         fontSize: '14px',
         color: css(COLORS.ink2),
       })
       .setOrigin(0.5);
-    const hint = s.add.text(0, height / 2 - 20, 'tap to continue', { fontFamily: SANS, fontSize: '12px', color: css(COLORS.disabled) }).setOrigin(0.5);
+    const hint = s.add.text(0, height / 2 - 18, 'tap to continue', { fontFamily: SANS, fontSize: '12px', color: css(COLORS.disabled) }).setOrigin(0.5);
 
-    const card = s.add.container(this.w / 2, this.h + height, [g, headText, big, sub, hint]).setDepth(80);
+    const parts: Phaser.GameObjects.GameObject[] = [g, headText, big, sub, hint];
+
+    if (rows.length) {
+      g.lineStyle(1, COLORS.brass, 0.35);
+      g.lineBetween(-width / 2 + 18, top + 118, width / 2 - 18, top + 118);
+      parts.push(
+        s.add
+          .text(0, top + 130, 'who carried it today', { fontFamily: SANS, fontSize: '11px', color: css(COLORS.disabled) })
+          .setOrigin(0.5)
+      );
+      rows.forEach((row, i) => {
+        const y = top + 148 + i * 19;
+        g.fillStyle(i === 0 ? COLORS.brassHi : COLORS.brass, i === 0 ? 1 : 0.5);
+        g.fillCircle(-width / 2 + 30, y, i === 0 ? 4 : 3);
+        parts.push(
+          s.add
+            .text(-width / 2 + 42, y, `u/${row.name}`, { fontFamily: SANS, fontSize: '13px', color: css(COLORS.ink) })
+            .setOrigin(0, 0.5),
+          s.add
+            .text(width / 2 - 24, y, `+${fmt(row.px)} px`, { fontFamily: MONO, fontSize: '13px', color: css(COLORS.brassDark) })
+            .setOrigin(1, 0.5)
+        );
+      });
+    }
+
+    const card = s.add.container(this.w / 2, this.h + height, parts).setDepth(80);
     card.setSize(width, height);
-    card.setInteractive(new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height), Phaser.Geom.Rectangle.Contains);
+    card.setInteractive(new Phaser.Geom.Rectangle(-width / 2, top, width, height), Phaser.Geom.Rectangle.Contains);
     card.on('pointerdown', () => onClose());
     this.resultCard = card;
-    s.tweens.add({ targets: card, y: this.h - 150, duration: 420, ease: 'Back.out' });
+    s.tweens.add({ targets: card, y: this.h - 40 - height / 2, duration: 420, ease: 'Back.out' });
   }
 
   hideResult(): void {

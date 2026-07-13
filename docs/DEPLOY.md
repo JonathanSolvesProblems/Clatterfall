@@ -78,7 +78,7 @@ This submits the app for Reddit's review. Once approved it can be installed by o
 ## 7. Submit to the hackathon
 - **App listing:** the app's page on developer.reddit.com.
 - **Demo post:** the public post running the game on your subreddit. Judging is primarily on this post, so make sure the pilot machine is in place and the run auto-plays.
-- Record the 75s demo from `docs/DEMO_SCRIPT.md`. Lead the Devpost writeup with the personal marble-box story from `README.md`, then your one number, then the run.
+- Record the 60s demo from `demoscript.md` (local, not committed). Lead the Devpost writeup with the personal marble-box story from `README.md`, then your one number, then the run.
 - **App icon:** already wired (`marketingAssets.icon` → `assets/icon.png`, 1024×1024, 30 KB). Regenerate any time with `npx tsx tools/make-icon.mts`.
 
 **Claim the cheap parallel prizes (do both, ~20 min total):**

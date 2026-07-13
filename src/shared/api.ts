@@ -1,5 +1,5 @@
 /** Wire DTOs shared by the client and server (the /api contract). */
-import type { CliffhangerState, CollisionEvent, Keyframe, PartId } from './types';
+import type { CliffhangerState, CollisionEvent, Contributor, Keyframe, PartId } from './types';
 
 /** A placed part as sent to the client (owner + decay flag, no timestamps). */
 export type WireCell = {
@@ -41,8 +41,13 @@ export type StateResponse = {
   lastContributions: Record<string, number>; // cellId -> +px from the latest run
   /** Decimated path of the last run, so the board can trace how the marble threaded the machine. */
   lastPath: { x: number; y: number }[];
+  /** Show the mod-only "remove part" tool. Always re-checked server-side on use. */
+  isMod?: boolean;
   user: UserPanel;
 };
+
+export type RemoveRequest = { c: number; r: number };
+export type RemoveResponse = { ok: boolean; message: string };
 
 export type PlaceRequest = { c: number; r: number; part: PartId; orient: string };
 
@@ -78,6 +83,7 @@ export type RunResponse = {
   quiet: boolean;
   contributions: Record<string, number>;
   cappingCell: string;
+  topContributors: Contributor[]; // who carried it furthest today (max 3)
   cells: WireCell[]; // the machine as it stood for this run
 };
 

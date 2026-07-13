@@ -57,13 +57,32 @@ describe('simulate: headless matter-js (M0 load-bearing)', () => {
     expect(a.keyframes).toEqual(b.keyframes);
   });
 
-  it('finishes well within the step budget (perf sanity)', () => {
+  it('simulates a full-season machine in milliseconds, not seconds', () => {
+    // A season's worth of play: ~200 parts is roughly 400 physics bodies, which is
+    // the size the daily cron actually has to chew through late in a season. This
+    // is the claim the README makes, so the test has to be the thing that proves it.
     const cells: Cell[] = [];
-    for (let r = 3; r < 30; r += 2) cells.push(cell(3 + (r % 3), r, 'ramp', r % 2 ? 'R' : 'L'));
-    const start = performance.now();
-    const res = simulate(cells, 30);
-    const ms = performance.now() - start;
-    expect(res.reach).toBeGreaterThan(0);
-    expect(ms).toBeLessThan(2000);
+    let r = 1;
+    for (let i = 0; i < 200; i++) {
+      const c = i % 8;
+      cells.push(cell(c, r, i % 5 === 0 ? 'bouncer' : 'ramp', i % 2 ? 'R' : 'L'));
+      if (c === 7) r++;
+    }
+    const deepest = cells.reduce((m, x) => Math.max(m, x.r), 0);
+
+    const runs: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      const start = performance.now();
+      const res = simulate(cells, deepest);
+      runs.push(performance.now() - start);
+      expect(res.reach).toBeGreaterThan(0);
+    }
+    runs.sort((a, b) => a - b);
+    const median = runs[2] as number;
+    console.log(`[perf] ${cells.length} parts (~${cells.length * 2 + 3} bodies): ${median.toFixed(1)}ms median`);
+
+    // Measured at ~6ms locally. 250ms leaves a wide margin for slow CI boxes while
+    // still failing loudly if someone makes the sim accidentally quadratic.
+    expect(median).toBeLessThan(250);
   });
 });

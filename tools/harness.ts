@@ -71,6 +71,11 @@ const runPayload: RunResponse = {
   quiet: false,
   contributions: sim.contributions,
   cappingCell: '',
+  topContributors: [
+    { name: 'alice', px: 341 },
+    { name: 'bo_diddley', px: 208 },
+    { name: 'quietriot', px: 96 },
+  ],
   cells: wire,
 };
 

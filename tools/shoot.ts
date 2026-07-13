@@ -51,6 +51,8 @@ async function shot(browser: Browser, name: string, url: string, o: Opts): Promi
     clicks: [{ x: 195, y: 684, after: 2600 }], // tap "Test run (preview)" -> plays the run
   });
   await shot(browser, 'run-mid', `${BASE}/game.html?scene=run`, { viewport: mobile, wait: 2400 });
+  // The money shot: the marble crossing the record line in slow motion.
+  await shot(browser, 'run-recordline', `${BASE}/game.html?scene=run`, { viewport: mobile, wait: 5200 });
   await shot(browser, 'run-result', `${BASE}/game.html?scene=run`, { viewport: mobile, wait: 8000 });
   // Regression: Run -> dismiss result -> back to Build must NOT crash (singleton field reset).
   await shot(browser, 'cycle-back-build', `${BASE}/game.html?scene=run`, {

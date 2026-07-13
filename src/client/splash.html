@@ -19,14 +19,19 @@
         <circle cx="34" cy="22" r="8" fill="#E4572E" />
         <circle cx="31" cy="19" r="3" fill="#FFD9B0" />
       </svg>
-      <h1 class="title">One More <span class="part">Part</span></h1>
+      <h1 class="title">Clatter<span class="part">fall</span></h1>
       <div class="stat" id="stat">a machine the whole community builds</div>
       <p class="hook">
-        The whole subreddit is building <b>one</b> giant marble machine, one part
-        per person, per day. Every morning the marble runs the <i>entire</i> thing.
-        Add your part and see how far it carries tomorrow.
+        One marble, one machine, <b>one part each per day</b>. You can only build
+        where yesterday's marble actually reached, and parts it stops touching
+        dissolve. Every morning the whole thing runs again and we all watch.
       </p>
-      <button class="cta" id="start-button">Open the machine ▸</button>
+      <button class="cta" id="start-button">
+        Open the machine
+        <svg class="cta-arrow" viewBox="0 0 10 12" aria-hidden="true">
+          <path d="M2 1 L8 6 L2 11 Z" fill="currentColor" />
+        </svg>
+      </button>
       <div class="foot" id="foot"></div>
     </div>
     <script type="module" src="splash.ts" defer></script>

@@ -67,6 +67,12 @@ export type CliffhangerState =
   | 'quiet' // no new parts today
   | 'firstday'; // the very first run
 
+/** A redditor and the px their parts carried the marble on one run. */
+export type Contributor = {
+  name: string;
+  px: number;
+};
+
 /** The authoritative result of one daily run. */
 export type RunResult = {
   date: string; // YYYY-MM-DD (UTC)
@@ -83,4 +89,5 @@ export type RunResult = {
   escape: { c: number; r: number };
   contributions: Record<string, number>; // cellId -> +px credited
   cappingCell: string; // cellId that capped the run, '' if none
+  topContributors: Contributor[]; // who carried the marble furthest today (max 3)
 };

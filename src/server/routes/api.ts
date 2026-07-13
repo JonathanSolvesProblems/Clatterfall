@@ -3,12 +3,14 @@ import { context, reddit } from '@devvit/web/server';
 import type { ErrorResponse, PlaceRequest, RunResponse, VoteRequest } from '../../shared/api';
 import type { CliffhangerState } from '../../shared/types';
 import { buildState } from '../core/state';
+import { topContributors } from '../core/contributors';
+import { isModerator } from '../core/mod';
 import { placePart } from '../core/place';
 import { castVote } from '../redis/votes';
 import { simulate } from '../sim/engine';
 import { cellId } from '../../shared/geometry';
 import { TIE_EPS_PX } from '../../shared/constants';
-import { cellExists, dayOfSeason, getLatestRunDate, getRun, getSeasonState, loadMachine } from '../redis/schema';
+import { cellExists, dayOfSeason, getLatestRunDate, getRun, getSeasonState, loadMachine, removeCells } from '../redis/schema';
 import { markWatched } from '../redis/users';
 
 export const api = new Hono();
@@ -24,9 +26,10 @@ async function currentUser(): Promise<string | null> {
 api.get('/state', async (c) => {
   const { postId } = context;
   if (!postId) return c.json<ErrorResponse>({ status: 'error', message: 'missing postId' }, 400);
-  const user = (await currentUser()) ?? 'anonymous';
+  const name = await currentUser();
+  const user = name ?? 'anonymous';
   const state = await buildState(postId, user, user);
-  return c.json(state);
+  return c.json({ ...state, isMod: await isModerator(name) });
 });
 
 api.get('/run/:date', async (c) => {
@@ -52,6 +55,8 @@ api.get('/run/:date', async (c) => {
     quiet: run.quiet,
     contributions: run.contributions,
     cappingCell: run.cappingCell,
+    // Runs saved before this field existed have no leaderboard; recompute it.
+    topContributors: run.topContributors ?? topContributors(machine.cells, run.contributions),
     cells: machine.cells.map((m) => ({ c: m.c, r: m.r, part: m.part, orient: m.orient, owner: m.owner })),
   };
   return c.json(payload);
@@ -87,6 +92,7 @@ api.get('/preview', async (c) => {
     quiet: false,
     contributions: sim.contributions,
     cappingCell: state === 'capped' ? sim.cappingCell : '',
+    topContributors: topContributors(machine.cells, sim.contributions),
     cells: machine.cells.map((m) => ({ c: m.c, r: m.r, part: m.part, orient: m.orient, owner: m.owner })),
   };
   return c.json(payload);
@@ -110,6 +116,24 @@ api.post('/vote', async (c) => {
   if (!(await cellExists(id))) return c.json({ ok: false, up: 0, down: 0 }, 200);
   const counts = await castVote(id, body.dir, user);
   return c.json({ ok: true, up: counts.up, down: counts.down, applied: counts.applied });
+});
+
+/** Mod tool: pull a single griefing part without reseeding the whole machine.
+ *  Mod status is re-checked here, never taken from the client. */
+api.post('/remove', async (c) => {
+  const user = await currentUser();
+  if (!user) return c.json({ ok: false, message: 'Log in' }, 200);
+  if (!(await isModerator(user))) return c.json({ ok: false, message: 'Moderators only' }, 200);
+
+  const body = await c.req.json<{ c: number; r: number }>().catch(() => null);
+  if (!body || typeof body.c !== 'number' || typeof body.r !== 'number') {
+    return c.json({ ok: false, message: 'Bad request' }, 200);
+  }
+  const id = cellId(body.c, body.r);
+  if (!(await cellExists(id))) return c.json({ ok: false, message: 'No part there' }, 200);
+
+  await removeCells([id]);
+  return c.json({ ok: true, message: 'Part removed' });
 });
 
 api.post('/watched', async (c) => {

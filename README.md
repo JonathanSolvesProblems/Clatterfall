@@ -2,7 +2,7 @@
 
 **A whole subreddit builds one marble machine, but you can only build where yesterday's marble actually reached. Every morning the entire machine re-runs as a single canonical simulation that everyone watches together, and the parts the marble abandons dissolve.**
 
-`r/Clatterfall` is one continuous descent, built by a crowd, one part per person per day. Nobody can build it alone. Everybody builds it together. It only grows.
+`r/Clatterfall` is one continuous descent, built by a crowd, one part per person per day. Nobody can build it alone. Everybody builds it together, and the machine keeps the parts that earn their place.
 
 > **Why I built this.** I collected marbles as a kid and kept a box of them, the kind of small private hoard you take out and admire by yourself. Clatterfall is the inverse of that box. There is one marble, and it belongs to everyone. A whole subreddit builds the machine it runs down, one part a day, and every morning we all watch the same marble together. I wanted to take the thing I loved alone as a kid and turn it into something a community does at the same time.
 
@@ -33,7 +33,7 @@ One marble. One warm hand-made contraption. One shared morning. That 8-second da
 ## Why it's Reddit-y (and not "AI slop")
 
 - **A collective artifact nobody could build alone.** It's the r/place ritual, but it's a *machine* and it *runs every single day*. The comment thread becomes the coordination arena ("someone put a bouncer at 4,6 so we stop hugging the left wall").
-- **It has its own identity.** A warm, sunlit woodworker's-bench look: matte wood-and-brass parts, a paper-cream board, a single vermilion marble named Pip, a brass measuring-ruler for the depth gauge. Every pixel is drawn from Phaser graphics primitives. **There are no sprite sheets, no stock art, and no AI-generated images anywhere in this game.** It is non-AI and proud, which is the right answer to a brief that explicitly warns against AI slop.
+- **It has its own identity.** A warm, sunlit woodworker's-bench look: matte wood-and-brass parts, a paper-cream board, a single vermilion marble named Pip, a brass measuring-ruler for the depth gauge. Every pixel of the game is drawn from Phaser Graphics primitives at runtime (the feed card outside the game is hand-written HTML plus one inline SVG). **There are no sprite sheets, no stock art, and no AI-generated images anywhere in this project.** It is non-AI and proud, which is the right answer to a brief that explicitly warns against AI slop.
 - **Scarcity makes each contribution matter.** One part per person per day, placed only on the shared frontier, means your single daily part is consequential, never spam.
 
 ## How it targets all four prizes
@@ -41,8 +41,8 @@ One marble. One warm hand-made contraption. One shared morning. That 8-second da
 | Prize | How Clatterfall earns it |
 | --- | --- |
 | **Best App with a Hook ($15k)** | A true daily cliffhanger: a cron-fired run of the whole communal machine, plus one-part-a-day scarcity, streaks, and permanent visible progress toward a goal. |
-| **Best Use of Phaser ($5k)** | The daily run is a money-shot no DOM/CSS app can fake, and it's Phaser doing the work: a camera-follow rig, real-time Graphics compositing (motion-trailed marble, impact flash rings, sawdust bursts), tween/easing choreography, camera-shake on a record break, and scene orchestration. Every pixel (parts, marble, ruler, confetti) is drawn from Phaser primitives at runtime. No sprite sheets, no images, no AI art. |
-| **Best Use of User Contributions ($3k)** | Every placed part *is* the content. Zero authoring friction, zero cold-start. The machine is pure, infinitely-growing UGC. |
+| **Best Use of Phaser ($5k)** | The daily run is a money-shot no DOM/CSS app can fake, and it's Phaser doing the work: a camera-follow rig, real-time Graphics compositing (motion-trailed marble, impact flash rings, sawdust bursts), tween/easing choreography, camera-shake on a record break, and scene orchestration. **As the marble closes on the record line, playback dilates into slow motion and the camera leans in**, so the moment the whole community is waiting for actually plays like a moment. Everything you see in the game (parts, marble, ruler, record line, confetti) is drawn from Phaser primitives at runtime. No sprite sheets, no images, no AI art. |
+| **Best Use of User Contributions ($3k)** | Every placed part *is* the content. Zero authoring friction, zero cold-start. Each part is signed, credited with the exact px it carried the marble, votable, and the daily result card names the top three carriers. |
 | **Best Use of Retention Mechanics ($3k)** | Daily fresh content by construction (the run), streaks, a climbing collective record, seasons with a deepening goal, and comment-thread coordination. |
 
 ## The two hard problems, engineered out
@@ -73,9 +73,9 @@ Hono server (Node)
 
 **Two touches that close the loop and surface the community:**
 - **Test run (preview).** The scored run only happens once a day (that 24h wait is the retention hook), but you can hit *Test run* any time. The server re-simulates the machine on demand (including the part you just placed) and the fresh result plays back instantly, non-scoring. It answers "did my part help?" without waiting, and without letting anyone rehearse their way around the daily cliffhanger.
-- **Every part is signed.** Tap any placed part to see who built it and how far it carried the marble last run ("u/alice's ramp, carried +118 px"), and vote 👍 keep / 👎 cut. The splash shows "built by N redditors". The collective is visible, not abstract.
+- **Every part is signed.** Tap any placed part to see who built it and how far it carried the marble last run ("u/alice's ramp, carried +118 px"), then vote to keep it or cut it. The result card names the three redditors whose parts carried the marble furthest today, and the splash shows "built by N redditors". The collective is visible, not abstract.
 
-- **Physics:** `matter-js` runs headless in the Devvit Node runtime. Confirmed by a smoke test and unit tests; it steps a few-hundred-body machine in single-digit milliseconds.
+- **Physics:** `matter-js` runs headless in the Devvit Node runtime. A 200-part machine (about 400 bodies, roughly what a full season looks like) simulates in ~6ms, and 400 parts in ~17ms. That is asserted by a perf test, not estimated.
 - **Scoring:** REACH is the marble's max depth. Per-part contribution uses a high-water-mark accumulator, so each part's credit sums *exactly* to REACH even when a bouncer sends the marble upward. That is how the result card can honestly say "your ramp carried it +269 px."
 - **Storage:** Redis only. The machine is a sparse hash (`cell → part|orient|owner`), so unbounded depth is free. Atomic claims, the one-part-a-day lock, and the idempotent cron run-lock are all `hSetNX` hashes.
 - **Parts (4, all static bodies so the marble is the only moving object):** Straight Ramp, Curved Chute, Bouncer, Funnel. Each is defined once as physics/draw primitives shared by the server sim and the client renderer, so the collision surface always matches the picture.
@@ -93,7 +93,7 @@ The delta in one line: it is the only one that is **one machine, one marble, one
 
 ## Honest limitations and path to production
 
-- **Seeded, not yet adopted.** A freshly installed post ships with a real, working ~16-part starter cascade (built by the same greedy "extend the reach" logic the game rewards, so every seed part is genuinely on the marble's path). To make the record-chase real for judging, the machine needs a live cohort placing parts across several UTC days. That pilot is the single most important pre-submission task (see `docs/DEPLOY.md`).
+- **Seeded, not yet adopted.** A freshly installed post ships with a real, working 26-part starter cascade (built by the same greedy "extend the reach" logic the game rewards, so all 26 seed parts are genuinely on the marble's path). To make the record-chase real for judging, the machine needs a live cohort placing parts across several UTC days. That pilot is the single most important pre-submission task (see `docs/DEPLOY.md`).
 - **Physics feel is playtest-bound.** The gravity/restitution/friction values are tuned to feel weighty and reliably rest, but a bigger part vocabulary would need more tuning. The four-static-part palette is a deliberate scope choice that keeps the marble the only dynamic body (which also protects determinism).
 - **Cut for scope, easy to add later:** a zoomed-out minimap, a Hall of Machines gallery of finished seasons, and richer parts (a spinner and a seesaw were designed and deliberately deferred).
 - **To production:** a longer season economy, per-subreddit tuning of the run hour and frontier width, and load-testing the cron at ~500 parts.
@@ -115,7 +115,7 @@ npx tsx tools/harness.ts     # http://localhost:7420/game.html
 npx tsx tools/shoot.ts       # Playwright screenshots into tools/shots/
 ```
 
-To deploy to a real subreddit, see **`docs/DEPLOY.md`**. The 75-second demo voiceover and shot list are in **`docs/DEMO_SCRIPT.md`**.
+To deploy to a real subreddit, see **`docs/DEPLOY.md`**.
 
 ---
 

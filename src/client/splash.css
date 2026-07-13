@@ -66,6 +66,9 @@ body {
 
 .cta {
   margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   background: var(--brass);
   color: var(--paperHi);
   border: none;
@@ -76,6 +79,12 @@ body {
   cursor: pointer;
   box-shadow: 0 4px 0 rgba(138, 90, 28, 0.55);
   transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.cta-arrow {
+  width: 9px;
+  height: 11px;
+  flex: none;
 }
 
 .cta:active {

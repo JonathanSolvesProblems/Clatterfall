@@ -5,7 +5,8 @@
  *   cron double-fire is a no-op; run:<date> is written last as the completion
  *   sentinel.
  */
-import type { CliffhangerState, RunResult } from '../../shared/types';
+import type { CliffhangerState, Contributor, RunResult } from '../../shared/types';
+import { topContributors } from './contributors';
 import { cellId } from '../../shared/geometry';
 import { SEASON_DAY_CAP, TIE_EPS_PX } from '../../shared/constants';
 import { simulate } from '../sim/engine';
@@ -132,6 +133,8 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
     await applyRunStats(owner, sum, ownerBest.get(owner) ?? 0);
   }
 
+  const leaders: Contributor[] = topContributors(cells, sim.contributions);
+
   const day = dayOfSeason(season.seasonStart, nowMs);
   const result: RunResult = {
     date,
@@ -148,6 +151,7 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
     escape: sim.escape,
     contributions: sim.contributions,
     cappingCell: state === 'capped' ? sim.cappingCell : '',
+    topContributors: leaders,
   };
   await saveRun(result); // completion sentinel, written last
 

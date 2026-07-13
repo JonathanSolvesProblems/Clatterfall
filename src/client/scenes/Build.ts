@@ -8,7 +8,7 @@ import { cellCenter, parseCell } from '../../shared/geometry';
 import { COLORS, css } from '../../shared/theme';
 import { SANS } from '../render/fonts';
 import { BoardView } from '../render/board';
-import { Hud } from '../render/hud';
+import { Hud, type CtaIcon } from '../render/hud';
 import { drawPart } from '../render/draw';
 import type { Synth } from '../audio/synth';
 import { net } from '../net';
@@ -366,7 +366,8 @@ export class Build extends Scene {
     const partName = PARTS[cell.part].name;
     const contrib = this.state.lastContributions[`${cell.c}:${cell.r}`] ?? 0;
     const w = Math.min(this.scale.width - 40, 300);
-    const h = 100;
+    const isMod = this.state.isMod === true;
+    const h = isMod ? 136 : 100;
 
     const g = this.add.graphics();
     g.fillStyle(COLORS.paperHi, 1);
@@ -383,12 +384,54 @@ export class Build extends Scene {
         color: css(COLORS.ink2),
       })
       .setOrigin(0.5);
-    const up = this.voteButton(-52, h / 2 - 22, 'keep', 1, cell);
-    const down = this.voteButton(52, h / 2 - 22, 'cut', -1, cell);
+    const voteY = isMod ? -h / 2 + 70 : h / 2 - 22;
+    const items: Phaser.GameObjects.GameObject[] = [
+      g,
+      title,
+      sub,
+      this.voteButton(-52, voteY, 'keep', 1, cell),
+      this.voteButton(52, voteY, 'cut', -1, cell),
+    ];
+    if (isMod) items.push(this.modRemoveButton(0, h / 2 - 20, cell));
 
-    this.popover = this.add.container(this.scale.width / 2, this.scale.height - 172, [g, title, sub, up, down]).setDepth(85);
+    this.popover = this.add.container(this.scale.width / 2, this.scale.height - 172, items).setDepth(85);
     this.popover.setScale(0.92);
     this.tweens.add({ targets: this.popover, scale: 1, duration: 160, ease: 'Back.out' });
+  }
+
+  /**
+   * Mods can pull one griefing part instead of reseeding the whole machine, which
+   * was previously the only removal tool. The server re-checks mod status on the
+   * call, so a forged `isMod` in the client buys nothing.
+   */
+  private modRemoveButton(x: number, y: number, cell: WireCell): Phaser.GameObjects.Container {
+    const bw = 204;
+    const bh = 26;
+    const g = this.add.graphics();
+    g.lineStyle(1.5, COLORS.invalid, 0.7);
+    g.strokeRoundedRect(-bw / 2, -bh / 2, bw, bh, 8);
+    const t = this.add
+      .text(0, 0, 'remove this part (mod)', { fontFamily: SANS, fontSize: '11px', color: css(COLORS.invalid) })
+      .setOrigin(0.5);
+    const btn = this.add.container(x, y, [g, t]).setSize(bw, bh);
+    btn.setInteractive(new Phaser.Geom.Rectangle(-bw / 2, -bh / 2, bw, bh), Phaser.Geom.Rectangle.Contains);
+    btn.on('pointerdown', () => {
+      this.synth.unlock();
+      net
+        .remove(cell.c, cell.r)
+        .then((res) => {
+          if (!res.ok) {
+            this.toast(res.message);
+            return;
+          }
+          this.state.cells = this.state.cells.filter((x) => !(x.c === cell.c && x.r === cell.r));
+          this.closePopover();
+          this.redrawBoard();
+          this.toast('Part removed');
+        })
+        .catch(() => this.toast('Remove failed'));
+    });
+    return btn;
   }
 
   /**
@@ -440,9 +483,9 @@ export class Build extends Scene {
     this.hud.setTopBar({ day: s.day, season: s.season, streak: s.user.streak });
     this.hud.setDepth(s.reach, s.record, s.goal);
     if (s.hasNewRunForUser && s.latestRunDate) {
-      this.setCta('▶  Watch today’s run', () => this.watchRun());
+      this.setCta('Watch today’s run', () => this.watchRun(), true, 'play');
     } else if (s.user.placedToday) {
-      this.setCta(this.countdownText(), undefined, false);
+      this.setCta(this.countdownText(), undefined, false, 'check');
     } else if (this.selectedCell) {
       this.setCta(`Place ${PARTS[this.selectedPart].name}`, () => this.doPlace());
     } else {
@@ -450,13 +493,13 @@ export class Build extends Scene {
     }
     // "Test run" preview, hidden while mid-placement (so it never covers the palette).
     const canPreview = s.cells.length > 0 && !this.selectedCell;
-    this.hud.setSecondary(canPreview ? '▶ Test run (preview)' : '', () => this.previewRun());
+    this.hud.setSecondary(canPreview ? 'Test run (preview)' : '', () => this.previewRun());
   }
 
-  private setCta(text: string, onClick?: () => void, enabled = true): void {
+  private setCta(text: string, onClick?: () => void, enabled = true, icon: CtaIcon = 'none'): void {
     if (text === this.lastCta && enabled) return;
     this.lastCta = text;
-    this.hud.setCta(text, onClick, enabled);
+    this.hud.setCta(text, onClick, enabled, icon);
   }
 
   private countdownText(): string {
@@ -465,7 +508,7 @@ export class Build extends Scene {
     const hh = String(Math.floor(s / 3600)).padStart(2, '0');
     const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
     const ss = String(s % 60).padStart(2, '0');
-    return `Placed ✓  next run in ${hh}:${mm}:${ss}`;
+    return `Placed. Next run in ${hh}:${mm}:${ss}`;
   }
 
   // ---- juice ----------------------------------------------------------------
