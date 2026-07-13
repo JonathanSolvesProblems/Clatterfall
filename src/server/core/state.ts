@@ -9,6 +9,7 @@ import {
   dayOfSeason,
   getFrontier,
   getLatestRunDate,
+  getLedger,
   getRun,
   getRunHour,
   getSeasonState,
@@ -78,6 +79,11 @@ export async function buildState(
     nextRunAtMs: nextRunAtMs(now, runHour),
     serverNowMs: now,
     builders,
+    ledger: await getLedger(),
+    // Of the parts still standing, how many did the marble actually touch on the
+    // last run. This is the "still carrying the marble" figure, and it is the only
+    // one of the three that proves the parts are load-bearing rather than merely present.
+    carrying: Object.values(latestRun?.contributions ?? {}).filter((px) => px > 0).length,
     lastContributions: latestRun?.contributions ?? {},
     lastPath: (latestRun?.keyframes ?? []).filter((_, i) => i % 2 === 0).map((k) => ({ x: k.x, y: k.y })),
     user: userPanel,

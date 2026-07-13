@@ -20,6 +20,9 @@ export const K = {
   runLocks: 'meta:runlocks',
   runSeq: 'meta:runseq', // monotonic id source for forced/demo runs
   pending: 'meta:pending', // parts placed since the last run (quiet detection)
+  // Lifetime ledger. placed - dissolved === parts still standing, always.
+  totalPlaced: 'mach:placed',
+  totalDissolved: 'mach:dissolved',
   userDays: (date: string) => `ud:${date}`, // field userId -> cellId (atomic day lock)
   user: (id: string) => `user:${id}`,
   votes: (cellId: string) => `votes:${cellId}`,
@@ -267,4 +270,28 @@ export async function readAndResetPending(): Promise<number> {
   const n = Number((await redis.get(K.pending)) ?? '0');
   await redis.set(K.pending, '0');
   return n;
+}
+
+// ---- Lifetime ledger --------------------------------------------------------
+// The machine's whole thesis is that the marble, not a moderator, decides what
+// survives. That is only a claim until you can count it, so every part ever laid
+// down and every part the marble abandoned is tallied here.
+
+export async function incrPlaced(n = 1): Promise<void> {
+  if (n > 0) await redis.incrBy(K.totalPlaced, n);
+}
+
+export async function incrDissolved(n: number): Promise<void> {
+  if (n > 0) await redis.incrBy(K.totalDissolved, n);
+}
+
+export async function getLedger(): Promise<{ placed: number; dissolved: number }> {
+  const placed = Number((await redis.get(K.totalPlaced)) ?? '0');
+  const dissolved = Number((await redis.get(K.totalDissolved)) ?? '0');
+  return { placed, dissolved };
+}
+
+export async function resetLedger(placed: number): Promise<void> {
+  await redis.set(K.totalPlaced, String(placed));
+  await redis.set(K.totalDissolved, '0');
 }

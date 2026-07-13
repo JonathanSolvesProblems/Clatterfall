@@ -38,6 +38,10 @@ export type StateResponse = {
   nextRunAtMs: number;
   serverNowMs: number;
   builders: number; // distinct redditors who have placed a standing part
+  /** Lifetime ledger. placed - dissolved === parts still standing. */
+  ledger: { placed: number; dissolved: number };
+  /** Standing parts the marble actually touched last run (i.e. load-bearing). */
+  carrying: number;
   lastContributions: Record<string, number>; // cellId -> +px from the latest run
   /** Decimated path of the last run, so the board can trace how the marble threaded the machine. */
   lastPath: { x: number; y: number }[];
@@ -84,6 +88,7 @@ export type RunResponse = {
   contributions: Record<string, number>;
   cappingCell: string;
   topContributors: Contributor[]; // who carried it furthest today (max 3)
+  dissolved: number; // parts the marble abandoned, removed before this run
   cells: WireCell[]; // the machine as it stood for this run
 };
 

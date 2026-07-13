@@ -14,7 +14,7 @@ import type { Cell, PartId } from '../../shared/types';
 import { cellId } from '../../shared/geometry';
 import { simulate } from '../sim/engine';
 import { computeAndStoreFrontier } from './frontier';
-import { K, serializeCell, setDeepestRow } from '../redis/schema';
+import { K, resetLedger, serializeCell, setDeepestRow } from '../redis/schema';
 
 const HOUSE = 'clatterfall';
 
@@ -73,6 +73,9 @@ export async function seedStarterMachine(nowMs: number): Promise<number> {
   }
   await redis.hSet(K.cells, fields);
   await setDeepestRow(deepest);
+  // Start the ledger at the seed size so `placed - dissolved === standing` is an
+  // invariant from the very first second, not just from the first player's part.
+  await resetLedger(cells.length);
   const sim = simulate(cells, deepest);
   await computeAndStoreFrontier(sim.escape, cells);
   return cells.length;

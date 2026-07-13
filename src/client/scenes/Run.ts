@@ -281,7 +281,8 @@ export class Run extends Scene {
         yourPx,
         () => this.done(),
         this.preview,
-        this.run.topContributors ?? []
+        this.run.topContributors ?? [],
+        this.run.dissolved ?? 0
       );
     });
   }

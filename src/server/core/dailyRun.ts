@@ -21,6 +21,7 @@ import {
   getLatestRunDate,
   getRun,
   getSeasonState,
+  incrDissolved,
   loadMachine,
   nextRunSeq,
   readAndResetPending,
@@ -73,6 +74,7 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
     const rm = new Set(removed);
     cells = cells.filter((c) => !rm.has(cellId(c.c, c.r)));
   }
+  let dissolved = removed.length;
   const deepest = cells.reduce((m, c) => Math.max(m, c.r), 0);
   await setDeepestRow(deepest);
 
@@ -93,8 +95,10 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
     await removeCells([sim.stuckOn]);
     cells = cells.filter((c) => cellId(c.c, c.r) !== sim.stuckOn);
     await setDeepestRow(cells.reduce((m, c) => Math.max(m, c.r), 0));
+    dissolved += 1;
     console.log(`[Clatterfall] dissolved jamming part at ${sim.stuckOn}`);
   }
+  await incrDissolved(dissolved);
 
   // Advance the frontier for the next building day.
   await computeAndStoreFrontier(sim.escape, cells);
@@ -152,6 +156,7 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
     contributions: sim.contributions,
     cappingCell: state === 'capped' ? sim.cappingCell : '',
     topContributors: leaders,
+    dissolved,
   };
   await saveRun(result); // completion sentinel, written last
 

@@ -90,4 +90,5 @@ export type RunResult = {
   contributions: Record<string, number>; // cellId -> +px credited
   cappingCell: string; // cellId that capped the run, '' if none
   topContributors: Contributor[]; // who carried the marble furthest today (max 3)
+  dissolved: number; // parts the marble abandoned, removed before this run
 };

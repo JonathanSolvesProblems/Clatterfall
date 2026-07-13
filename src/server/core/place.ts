@@ -18,6 +18,7 @@ import {
   getDeepestRow,
   getFrontier,
   incrPending,
+  incrPlaced,
   isFrontier,
   releaseCell,
   setDeepestRow,
@@ -57,6 +58,7 @@ export async function placePart(userId: string, req: PlaceRequest): Promise<Plac
   await clearFrontierCell(id);
   if (r > (await getDeepestRow())) await setDeepestRow(r);
   await incrPending();
+  await incrPlaced();
   const streak = await recordPlacement(userId, date);
 
   return {

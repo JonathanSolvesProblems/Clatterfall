@@ -64,8 +64,19 @@ body {
   color: var(--ink2);
 }
 
+/* The survival ledger. Understated, but it is the proof behind the headline. */
+.ledger {
+  font-family: 'DM Mono', 'SFMono-Regular', 'Courier New', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.2px;
+  color: var(--ink2);
+  opacity: 0.85;
+  text-align: center;
+  min-height: 14px;
+}
+
 .cta {
-  margin-top: 8px;
+  margin-top: 4px;
   display: inline-flex;
   align-items: center;
   gap: 9px;

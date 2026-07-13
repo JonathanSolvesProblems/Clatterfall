@@ -285,7 +285,8 @@ export class Hud {
     yourPx: number,
     onClose: () => void,
     preview = false,
-    contributors: Contributor[] = []
+    contributors: Contributor[] = [],
+    dissolved = 0
   ): void {
     this.resultCard?.destroy();
     const s = this.scene;
@@ -294,7 +295,8 @@ export class Hud {
     // Name the redditors whose parts actually carried the marble today. The credits
     // sum exactly to the reach, so these numbers are literal, not a popularity score.
     const rows = contributors.slice(0, 3);
-    const extra = rows.length ? 30 + rows.length * 19 : 0;
+    const dissolveLine = !preview && dissolved > 0;
+    const extra = (rows.length ? 30 + rows.length * 19 : 0) + (dissolveLine ? 20 : 0);
     const height = 150 + extra;
     const top = -height / 2;
 
@@ -346,6 +348,22 @@ export class Hud {
             .setOrigin(1, 0.5)
         );
       });
+    }
+
+    // The dissolve is the mechanic nothing else has, and until now it happened
+    // silently overnight where nobody could see it. Say it out loud.
+    if (dissolveLine) {
+      const y = height / 2 - 40;
+      const n = dissolved === 1 ? '1 part' : `${dissolved} parts`;
+      parts.push(
+        s.add
+          .text(0, y, `${n} the marble stopped touching dissolved overnight`, {
+            fontFamily: SANS,
+            fontSize: '11px',
+            color: css(COLORS.pipRim),
+          })
+          .setOrigin(0.5)
+      );
     }
 
     // Do NOT call setSize() here. On a Container it sets displayOrigin to (w/2, h/2),

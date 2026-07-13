@@ -43,6 +43,8 @@ const baseState: StateResponse = {
   nextRunAtMs: NOW + 5 * 3600_000,
   serverNowMs: NOW,
   builders: 7,
+  ledger: { placed: 61, dissolved: 22 },
+  carrying: Object.values(sim.contributions).filter((px) => px > 0).length,
   lastContributions: sim.contributions,
   lastPath: sim.keyframes.filter((_, i) => i % 2 === 0).map((k) => ({ x: k.x, y: k.y })),
   user: {
@@ -76,6 +78,7 @@ const runPayload: RunResponse = {
     { name: 'bo_diddley', px: 208 },
     { name: 'quietriot', px: 96 },
   ],
+  dissolved: 2,
   cells: wire,
 };
 
