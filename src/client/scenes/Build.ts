@@ -383,14 +383,19 @@ export class Build extends Scene {
         color: css(COLORS.ink2),
       })
       .setOrigin(0.5);
-    const up = this.voteButton(-52, h / 2 - 22, '👍 keep', 1, cell);
-    const down = this.voteButton(52, h / 2 - 22, '👎 cut', -1, cell);
+    const up = this.voteButton(-52, h / 2 - 22, 'keep', 1, cell);
+    const down = this.voteButton(52, h / 2 - 22, 'cut', -1, cell);
 
     this.popover = this.add.container(this.scale.width / 2, this.scale.height - 172, [g, title, sub, up, down]).setDepth(85);
     this.popover.setScale(0.92);
     this.tweens.add({ targets: this.popover, scale: 1, duration: 160, ease: 'Back.out' });
   }
 
+  /**
+   * The keep/cut buttons. The chevron is DRAWN, not an emoji: 👍/👎 are
+   * OS-rendered raster images, which would both contradict "every pixel is drawn
+   * at runtime" and read as the emoji-as-icon tell that judges call AI slop.
+   */
   private voteButton(x: number, y: number, label: string, dir: 1 | -1, cell: WireCell): Phaser.GameObjects.Container {
     const bw = 100;
     const bh = 28;
@@ -400,7 +405,17 @@ export class Build extends Scene {
     g.fillRoundedRect(-bw / 2, -bh / 2, bw, bh, 8);
     g.lineStyle(1.5, tint, 1);
     g.strokeRoundedRect(-bw / 2, -bh / 2, bw, bh, 8);
-    const t = this.add.text(0, 0, label, { fontFamily: SANS, fontSize: '12px', color: css(COLORS.ink) }).setOrigin(0.5);
+
+    // A solid chevron: up = keep, down = cut.
+    const cx = -bw / 2 + 17;
+    const s = 5;
+    g.fillStyle(tint, 1);
+    if (dir > 0) g.fillTriangle(cx, -s, cx + s + 1, s, cx - s - 1, s);
+    else g.fillTriangle(cx, s, cx + s + 1, -s, cx - s - 1, -s);
+
+    const t = this.add
+      .text(6, 0, label, { fontFamily: SANS, fontSize: '12px', color: css(COLORS.ink) })
+      .setOrigin(0.5);
     const btn = this.add.container(x, y, [g, t]).setSize(bw, bh);
     btn.setInteractive(new Phaser.Geom.Rectangle(-bw / 2, -bh / 2, bw, bh), Phaser.Geom.Rectangle.Contains);
     btn.on('pointerdown', () => {

@@ -10,6 +10,9 @@ tools/shots
 # Devpost submission draft (contains personal handles and unpublished links)
 submission.md
 
+# Demo video shooting script + b-roll list (working doc)
+demoscript.md
+
 # Editor / assistant tooling
 .claude/
 .cursor/
