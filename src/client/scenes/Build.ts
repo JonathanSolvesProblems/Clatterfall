@@ -191,7 +191,8 @@ export class Build extends Scene {
           color: css(COLORS.ink2),
         })
         .setOrigin(0.5, 0);
-      const tile = this.add.container(0, 0, [bg, icon, label]).setSize(size, size);
+      // No setSize(): on a Container it shifts the hit area by half the tile (see hud.ts).
+      const tile = this.add.container(0, 0, [bg, icon, label]);
       tile.setData('pid', pid);
       tile.setData('bg', bg);
       tile.setInteractive(new Phaser.Geom.Rectangle(-size / 2, -size / 2, size, size), Phaser.Geom.Rectangle.Contains);
@@ -413,7 +414,7 @@ export class Build extends Scene {
     const t = this.add
       .text(0, 0, 'remove this part (mod)', { fontFamily: SANS, fontSize: '11px', color: css(COLORS.invalid) })
       .setOrigin(0.5);
-    const btn = this.add.container(x, y, [g, t]).setSize(bw, bh);
+    const btn = this.add.container(x, y, [g, t]);
     btn.setInteractive(new Phaser.Geom.Rectangle(-bw / 2, -bh / 2, bw, bh), Phaser.Geom.Rectangle.Contains);
     btn.on('pointerdown', () => {
       this.synth.unlock();
@@ -459,7 +460,7 @@ export class Build extends Scene {
     const t = this.add
       .text(6, 0, label, { fontFamily: SANS, fontSize: '12px', color: css(COLORS.ink) })
       .setOrigin(0.5);
-    const btn = this.add.container(x, y, [g, t]).setSize(bw, bh);
+    const btn = this.add.container(x, y, [g, t]);
     btn.setInteractive(new Phaser.Geom.Rectangle(-bw / 2, -bh / 2, bw, bh), Phaser.Geom.Rectangle.Contains);
     btn.on('pointerdown', () => {
       this.synth.unlock();

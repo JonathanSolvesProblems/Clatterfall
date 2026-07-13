@@ -70,7 +70,7 @@ export class Hud {
     this.ctaText = s.add
       .text(0, 0, '', { fontFamily: SANS, fontSize: '18px', color: css(COLORS.paperHi), fontStyle: 'bold' })
       .setOrigin(0.5);
-    this.cta = s.add.container(0, 0, [this.ctaBg, this.ctaText]).setDepth(60);
+    this.cta = s.add.container(0, 0, [this.ctaBg, this.ctaText]).setDepth(60).setVisible(false);
     this.cta.on('pointerdown', () => this.onCta?.());
 
     this.secBg = s.add.graphics();
@@ -234,6 +234,9 @@ export class Hud {
       }
     }
 
+    // An empty CTA still drew nothing but stayed interactive, so in the Run scene it
+    // was an invisible button sitting over the bottom of the result card, eating taps.
+    this.cta.setVisible(!!this.ctaText.text);
     this.cta.setPosition(cx, cy);
     this.cta.setInteractive(
       new Phaser.Geom.Rectangle(-bw / 2, -bh / 2, bw, bh),
@@ -345,8 +348,11 @@ export class Hud {
       });
     }
 
+    // Do NOT call setSize() here. On a Container it sets displayOrigin to (w/2, h/2),
+    // and Phaser adds displayOrigin to the local point before testing the hit area,
+    // which shifts the clickable region half the card up and left. That is what made
+    // "tap to continue" dead: it sits below the shifted region's bottom edge.
     const card = s.add.container(this.w / 2, this.h + height, parts).setDepth(80);
-    card.setSize(width, height);
     card.setInteractive(new Phaser.Geom.Rectangle(-width / 2, top, width, height), Phaser.Geom.Rectangle.Contains);
     card.on('pointerdown', () => onClose());
     this.resultCard = card;

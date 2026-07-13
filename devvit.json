@@ -66,5 +66,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch"
+  },
+  "dev": {
+    "subreddit": "clatterfall_dev"
   }
 }
