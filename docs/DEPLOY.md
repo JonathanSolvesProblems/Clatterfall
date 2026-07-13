@@ -47,6 +47,14 @@ and `npm run test` should still be green.
 ```bash
 npx devvit playtest r/Clatterfall
 ```
+
+> **No subreddit yet?** Run `npx devvit playtest` with **no argument**. Reddit's backend
+> creates a throwaway playtest subreddit for you server-side and installs the app into it.
+> You do not get to pick the name and it comes out private, so it is a good way to smoke-test
+> the build but a bad place to host the judged demo post. Create `r/Clatterfall` (Public) for that.
+> The CLI only auto-creates when no subreddit is passed, no `dev.subreddit` is set in
+> `devvit.json`, and no `DEVVIT_SUBREDDIT` is in `.env`.
+
 This installs a dev build and hot-reloads as you edit. On install the app:
 - initialises game state (season 1, run hour 13:00 UTC),
 - seeds a real 26-part starter machine and its opening frontier,
