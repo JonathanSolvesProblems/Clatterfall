@@ -70,12 +70,56 @@ The cron fires once a day at 13:00 UTC. To advance the machine immediately witho
 To change the run hour, edit the cron in `devvit.json` (`scheduler.tasks.daily-run.cron`, currently `0 13 * * *`).
 
 ## 5. Seed real adoption (the most important step)
-Architecture is invisible to judges; **placements and a real record are not.** Before submitting:
-1. Recruit 5–20 people (a Discord cohort, friends with Reddit accounts, a pilot subreddit).
-2. Have each place a part on the frontier. Then run **"Run the machine now"** to simulate a "day." Repeat over 3+ real days so the record genuinely climbs and the machine looks community-built.
-3. **Lock your one repeatable number.** Every winning entry has a single number a judge can repeat without notes. Fill in this exact sentence and put it at the top of the Devpost writeup and in the demo:
-   > **"___ redditors, one machine, ___ px deep over ___ days."**
-   (The splash already renders "built by N redditors" live, so this number is visible in-product, not just claimed.) Screenshot the grown machine for the writeup. This line beats any architecture claim.
+
+Architecture is invisible to judges; **placements and a real record are not.** This is the
+only remaining task that changes the outcome.
+
+### The timing trap: start today or lose a day permanently
+
+The one-part-per-user-per-day lock is keyed to the **UTC calendar date**. You cannot force it,
+skip it, or fake it. "Run the machine now" advances the *machine*, but it does **not** hand
+anyone a fresh part. So the number of days in your headline number is decided entirely by the
+wall clock.
+
+Deadline is **Jul 15, 6:00pm PDT** (= Jul 16, 01:00 UTC). That leaves exactly three UTC days:
+
+| UTC day | What has to happen |
+| --- | --- |
+| **Jul 13 (today)** | Recruit + everyone places their first part. Run the machine at the end of the day. |
+| **Jul 14** | Everyone places part two. Run the machine. This is the day the record should visibly climb. |
+| **Jul 15** | Everyone places part three. Run the machine. Screenshot + record the demo. |
+
+Skip today and the best you can honestly write is "over 2 days."
+
+**More people beats more days.** Each person is capped at one part per day, so a 12-person
+cohort adds 12 parts/day while you personally can only ever add 1. Recruiting is strictly
+higher-leverage than waiting.
+
+### Recruitment copy (paste as-is)
+
+> I built a thing for the Reddit games hackathon and I need a few people to break it with me.
+>
+> It's one giant marble machine that a whole community builds together. You get **one part per
+> day**, and here's the catch: you can only build where yesterday's marble actually reached.
+> Every morning the entire machine runs again, top to bottom, and everyone watches the same
+> marble to see how deep it got. Parts the marble stops touching dissolve on their own.
+>
+> Takes about 20 seconds a day. Come place a part: [link]
+
+Post it where you already have standing (a Discord you're in, a group chat, friends with Reddit
+accounts). Do not spam subreddits you have no relationship with; that is a Reddit rules problem
+and it will not get you 12 committed people anyway.
+
+### Lock the one number
+
+Every winning entry has a single number a judge can repeat in a room without notes. Fill in this
+exact sentence and put it in the elevator pitch, the writeup, and the demo voiceover:
+
+> **"___ redditors, one machine, ___ px deep over ___ days."**
+
+The splash already renders "built by N redditors" live, so the number is visible **in-product**,
+not merely claimed. Screenshot the grown machine for the writeup. This line beats any
+architecture claim you could possibly make.
 
 ## 6. Publish for review
 ```bash
