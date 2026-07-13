@@ -18,3 +18,8 @@ demoscript.md
 .cursor/
 .idea/
 *.log
+
+# Scratch files from local probes / analysis
+tmpprobe/
+tools/_*
+probe.tmp.mjs
