@@ -30,3 +30,6 @@ broll/
 tmpprobe/
 tools/_*
 probe.tmp.mjs
+
+# Demo video build artefacts
+demo.edit-plan.json
