@@ -6,6 +6,15 @@
 
 **[Watch the 45-second demo](https://www.youtube.com/watch?v=KI0OJ51iiF4)** · **[Play it on r/Clatterfall](https://www.reddit.com/r/Clatterfall/)** · **[App listing](https://developers.reddit.com/apps/clatterfall)**
 
+| | |
+|---|---|
+| ![The daily run](preview/01-the-daily-run.png) | ![The frontier](preview/03-the-frontier.png) |
+| Every morning the whole machine re-runs, and everyone watches the same marble. | You can only build where yesterday's marble actually reached. |
+| ![Every part is signed](preview/05-every-part-is-signed.png) | ![The dissolve](preview/07-the-dissolve.png) |
+| Every part is signed, and credited with exactly how far it carried the marble. | Parts the marble stops touching dissolve overnight. No vote can save them. |
+
+<sub>More in [`preview/`](preview/). Regenerate with `python tools/make-preview-shots.py`.</sub>
+
 > **Why I built this.** I collected marbles as a kid and kept a box of them, the kind of small private hoard you take out and admire by yourself. Clatterfall is the inverse of that box. There is one marble, and it belongs to everyone. A whole subreddit builds the machine it runs down, one part a day, and every morning we all watch the same marble together. I wanted to take the thing I loved alone as a kid and turn it into something a community does at the same time.
 
 ---
