@@ -13,10 +13,10 @@ submission.md
 # Demo video shooting script + b-roll list (working doc)
 demoscript.md
 
-# Editor / assistant tooling
-.claude/
-.cursor/
+# Editor / IDE
 .idea/
+.vscode/*
+!.vscode/settings.json
 *.log
 
 # Scratch files from local probes / analysis
