@@ -20,20 +20,36 @@ mkdir -p "$OUT"
 # Three source framings, measured from the footage:
 #   FULL  -> game fullscreen; the shaft sits at x 647..1234. y=48 skips the title bar.
 #   MODAL -> game in the post modal; sits at x 774..1147, y 266..861.
-#   FEED  -> the POST CARD in the feed (not the game): x 570..1267, y 58..1079.
-#            Cropping this one like a modal slices straight through the copy.
+#   FEED  -> the post's own splash card. Deliberately starts BELOW the blue highlight
+#            banner: the post is highlighted in the subreddit, and framing wide enough
+#            to include the whole post makes that indigo chrome the dominant colour of
+#            the shot. This framing keeps Reddit's action bar (upvote / comment / share)
+#            so it still reads unmistakably as a real post, and nothing else.
 FULL="crop=707:1032:587:48"
 MODAL="crop=390:610:766:258"
-FEED="crop=700:1020:570:58"
+FEED="crop=660:560:595:305"
+
+# The game fills its frame edge to edge, so a caption laid over the bottom of it lands
+# on the app's own buttons — the brass "Place" / "Next run in" bar, the preview button.
+# There is no empty band to put text in, so we make one: the shot is scaled to 880px and
+# sits at the top, and the strip below it becomes a caption plate in the game's ink,
+# ruled in brass. Captions and labels live there and never cover the app again.
+SHOT_H=880
+SHOT_Y=16
+PLATE_Y=$((SHOT_H + SHOT_Y))          # 896
+INK="0x2E2A24@0.93"
+BRASS="0xC88A34@0.90"
+PLATE="drawbox=x=0:y=${PLATE_Y}:w=1920:h=$((1080 - PLATE_Y)):color=${INK}:t=fill,\
+drawbox=x=0:y=$((PLATE_Y - 3)):w=1920:h=3:color=${BRASS}:t=fill"
 
 cut() {
   local name="$1" src="$2" in="$3" dur="$4" crop="$5"
   ffmpeg -hide_banner -loglevel error -y \
     -ss "$in" -i "$src" -t "$dur" \
     -filter_complex "\
-[0:v]${crop},scale=-2:1080:flags=lanczos,setsar=1[fg];\
+[0:v]${crop},scale=-2:${SHOT_H}:flags=lanczos,setsar=1[fg];\
 [0:v]${crop},scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=32,eq=brightness=-0.05:saturation=0.85[bg];\
-[bg][fg]overlay=(W-w)/2:0,format=yuv420p" \
+[bg][fg]overlay=(W-w)/2:${SHOT_Y},${PLATE},format=yuv420p" \
     -r 30 -c:v libx264 -preset medium -crf 18 \
     -c:a aac -b:a 192k -ac 2 \
     "$OUT/$name.mp4"
@@ -66,7 +82,8 @@ cut 06-record-run     "$SRC/2026-07-14 08-33-21.mp4"           8.6 7.0  "$MODAL"
 # 7. NEW RECORD: confetti, and the real names on the board.
 cut 07-new-record     "$SRC/2026-07-14 08-33-21.mp4"          15.3 4.0  "$MODAL"
 
-# 8. THE CLOSE: the post card in the feed, built by 3 redditors.
+# 8. THE CLOSE: the post's splash card — day, record, "built by 3 redditors", and the
+#    countdown to the next run, which is the line the narration lands on.
 cut 08-feed-card      "$SRC/2026-07-14 08-54-18.mp4"         113.5 7.0  "$FEED"
 
 echo "done -> $OUT"
