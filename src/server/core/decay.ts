@@ -34,9 +34,23 @@ export async function evaluateDecay(
     await redis.hSet(K.votes(id), { missed: String(missed) });
 
     const age = nowMs - cell.placedAt;
+
+    /**
+     * The community can only ever ACCELERATE a removal. It can never veto one.
+     *
+     * This used to read `missed >= DECAY_UNTOUCHED_RUNS && up - down <= 0`, so a
+     * single upvote made an abandoned part immortal. That quietly made the whole
+     * pitch false: "nobody decides what stays, the marble does" is not true if a
+     * couple of upvotes can overrule the marble. Now the marble's verdict is final.
+     *
+     * Voting still matters, it just cannot resurrect: a part the crowd downvotes is
+     * cut EARLY, before the marble has spent two runs ignoring it, and keep-votes
+     * defend a part against a downvote brigade. Nobody can save a part the marble
+     * has abandoned.
+     */
     const voteDecay =
       !touched && age >= DECAY_MIN_AGE_MS && down - up >= DECAY_DOWNVOTE_THRESHOLD;
-    const untouchedDecay = missed >= DECAY_UNTOUCHED_RUNS && up - down <= 0;
+    const untouchedDecay = missed >= DECAY_UNTOUCHED_RUNS;
     if (voteDecay || untouchedDecay) remove.push(id);
   }
 

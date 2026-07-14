@@ -98,6 +98,7 @@ import {
   resetMachine,
 } from '../redis/schema';
 import { parseCell } from '../../shared/geometry';
+import { DECAY_DOWNVOTE_THRESHOLD, DECAY_MIN_AGE_MS } from '../../shared/constants';
 import { api } from '../routes/api';
 
 const DAY = 86_400_000;
@@ -121,7 +122,7 @@ describe('seed', () => {
     expect(cells.length).toBeGreaterThanOrEqual(16);
     const deepest = await getDeepestRow();
     expect(deepest).toBe(cells.reduce((m, c) => Math.max(m, c.r), 0));
-    expect(deepest).toBeLessThan(78); // still far from the season goal at row 80
+    expect(deepest).toBeLessThan(78); // still far from the season goal
 
     const frontier = await getFrontier();
     expect(frontier.length).toBeGreaterThan(0);
@@ -474,16 +475,57 @@ describe('decay / self-heal', () => {
     expect(after.cells.some((c) => idOf(c) === id)).toBe(false);
   });
 
-  it('keeps an untouched part the community upvoted', async () => {
+  /**
+   * The pitch is "nobody decides what stays, the marble does". That is only true if
+   * the community cannot overrule the marble, so this is the test that keeps the
+   * headline claim honest. It used to assert the OPPOSITE (an upvoted part survived
+   * abandonment), which meant the strongest line in the submission was false and the
+   * counter-example was sitting in our own test suite.
+   */
+  it('NOBODY can save a part the marble abandoned, however much the crowd likes it', async () => {
     await fresh();
     const { cells } = await loadMachine();
     const target = cells[1] as (typeof cells)[number];
     const id = idOf(target);
-    await redis.hIncrBy(K.votes(id), 'up', 3);
+    await redis.hIncrBy(K.votes(id), 'up', 99); // adored by the community
 
-    await evaluateDecay([target], new Set(), NOW);
-    expect(await evaluateDecay([target], new Set(), NOW)).toEqual([]);
+    await evaluateDecay([target], new Set(), NOW); // missed = 1
+    expect(await evaluateDecay([target], new Set(), NOW)).toEqual([id]); // missed = 2 -> gone
+
     const after = await loadMachine();
-    expect(after.cells.some((c) => idOf(c) === id)).toBe(true);
+    expect(after.cells.some((c) => idOf(c) === id)).toBe(false);
+  });
+
+  /**
+   * Voting can only ever ACCELERATE a removal, never veto one. A downvoted part is
+   * cut early, before the marble has spent two runs ignoring it.
+   */
+  it('the crowd can cut a part EARLY, before the marble has finished with it', async () => {
+    await fresh();
+    const { cells } = await loadMachine();
+    const target = cells[2] as (typeof cells)[number];
+    const id = idOf(target);
+    // Old enough to be votable out, and thoroughly disliked.
+    const old = { ...target, placedAt: NOW - DECAY_MIN_AGE_MS - 1000 };
+    await redis.hIncrBy(K.votes(id), 'down', DECAY_DOWNVOTE_THRESHOLD);
+
+    // Gone on the FIRST untouched run, without waiting for the marble's verdict.
+    expect(await evaluateDecay([old], new Set(), NOW)).toEqual([id]);
+  });
+
+  /** Keep-votes defend a part against a downvote brigade (but cannot resurrect it). */
+  it('keep-votes defend a part from a brigade', async () => {
+    await fresh();
+    const { cells } = await loadMachine();
+    const target = cells[3] as (typeof cells)[number];
+    const id = idOf(target);
+    const old = { ...target, placedAt: NOW - DECAY_MIN_AGE_MS - 1000 };
+    await redis.hIncrBy(K.votes(id), 'down', DECAY_DOWNVOTE_THRESHOLD);
+    await redis.hIncrBy(K.votes(id), 'up', DECAY_DOWNVOTE_THRESHOLD); // brigade neutralised
+
+    // Survives the first run: the vote no longer carries it out early...
+    expect(await evaluateDecay([old], new Set(), NOW)).toEqual([]);
+    // ...but the marble still gets the final say.
+    expect(await evaluateDecay([old], new Set(), NOW)).toEqual([id]);
   });
 });

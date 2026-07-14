@@ -357,7 +357,7 @@ export class Hud {
       const n = dissolved === 1 ? '1 part' : `${dissolved} parts`;
       parts.push(
         s.add
-          .text(0, y, `${n} the marble stopped touching dissolved overnight`, {
+          .text(0, y, `${n} the marble abandoned dissolved overnight`, {
             fontFamily: SANS,
             fontSize: '11px',
             color: css(COLORS.pipRim),

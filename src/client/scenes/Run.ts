@@ -338,14 +338,34 @@ export class Run extends Scene {
     this.board.setFocus(kf.y, 0.48 - 0.11 * k);
 
     if (kf.y > this.maxDepthSeen) this.maxDepthSeen = kf.y;
-    this.hud.setDepth(Math.round(this.maxDepthSeen), this.run.prevRecord, this.run.goal);
+
+    /**
+     * Show the CARRIED depth, capped at the run's reach.
+     *
+     * The marble physically keeps falling past the machine to the catch floor, six
+     * rows below the deepest part, but the machine gets no credit for that (see the
+     * note on `reach` in the sim). Reporting the raw depth meant the counter climbed
+     * past the score and then visibly ticked BACKWARDS when the run settled: on the
+     * seed it ran up to 2,051 and then counted down to 1,685, on every single run.
+     * Now it climbs to the score and stops there, which is also the honest number.
+     */
+    const carried = Math.min(this.maxDepthSeen, this.run.reach);
+    this.hud.setDepth(Math.round(carried), this.run.prevRecord, this.run.goal);
+
     if (
       !this.preview &&
       !this.recordBroken &&
       (this.run.state === 'record' || this.run.state === 'goal') &&
-      this.maxDepthSeen > this.run.prevRecord
+      carried > this.run.prevRecord
     ) {
       this.onRecordBreak();
+    }
+
+    // The marble is now falling out of the bottom of the machine, so the record line
+    // is behind it in a way that does not count. Fade it, or he appears to sail
+    // straight through the record on a day he did not actually beat it.
+    if (this.recordLineG && !this.recordBroken && this.maxDepthSeen > this.run.reach) {
+      this.recordLineG.setAlpha(0.18);
     }
 
     if (progress >= 1) this.finish();

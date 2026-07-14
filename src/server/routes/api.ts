@@ -10,7 +10,7 @@ import { castVote } from '../redis/votes';
 import { simulate } from '../sim/engine';
 import { cellId } from '../../shared/geometry';
 import { TIE_EPS_PX } from '../../shared/constants';
-import { cellExists, dayOfSeason, getLatestRunDate, getRun, getSeasonState, loadMachine, removeCells } from '../redis/schema';
+import { cellExists, dayOfSeason, getLatestRunDate, getRun, getSeasonState, incrDissolved, loadMachine, removeCells } from '../redis/schema';
 import { markWatched } from '../redis/users';
 
 export const api = new Hono();
@@ -141,6 +141,10 @@ api.post('/remove', async (c) => {
   if (!(await cellExists(id))) return c.json({ ok: false, message: 'No part there' }, 200);
 
   await removeCells([id]);
+  // A mod pull is a dissolve as far as the ledger is concerned. Without this the
+  // invariant `placed - dissolved === standing` breaks permanently, and the survival
+  // number on the feed card overstates the machine from then on.
+  await incrDissolved(1);
   return c.json({ ok: true, message: 'Part removed' });
 });
 

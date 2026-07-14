@@ -140,7 +140,7 @@ export function catchFloorRow(deepestRow: number): number {
   return Math.max(deepestRow + CATCH_FLOOR_GAP, 2);
 }
 
-/** Season goal depth, in rows (S1 => 80, S2 => 120, ...). */
+/** Season goal depth, in rows (S1 => 55, S2 => 95, ...). */
 export function seasonGoalRow(season: number): number {
   return SEASON1_GOAL_ROW + (season - 1) * GOAL_INTERVAL;
 }

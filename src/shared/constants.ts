@@ -27,7 +27,7 @@ export const DROPPER_X = 3 * CELL + CELL / 2; // 224
 /** Fallback escape cell when the marble touches nothing (day 1, all-miss). */
 export const DROPPER_CELL = { c: 3, r: 0 } as const;
 
-// ---- Frontier cone (the coordination device) --------------------------------
+// ---- Frontier (the coordination device) -------------------------------------
 /** Rows below the escape point that become buildable each day. */
 export const FRONTIER_DEPTH = 4;
 /** Cone half-width at the escape row; widens by 1 per row: |c-cE| <= BASE + dr. */
@@ -53,9 +53,8 @@ export const MIN_FRONTIER_CELLS = 6;
 // ---- Goal & seasons ---------------------------------------------------------
 /** Rows between checkpoint basins. */
 export const GOAL_INTERVAL = 40;
-/** Season 1 goal depth, in rows (= 5,120 logical px). */
 /**
- * Season 1's goal depth.
+ * Season 1's goal depth, in rows (= 3,520 logical px).
  *
  * Row 80 was set back when reach was inflated by the catch floor, which moved down
  * every time anyone placed a deeper part. Now that reach is what the machine actually
@@ -69,7 +68,6 @@ export const SEASON_DAY_CAP = 30;
 /** A basin spans 2 cells: [side, side+1]. */
 export const BASIN_WIDTH = 2;
 
-/** Rows below the deepest occupied cell where the soft catch-floor sits. */
 /**
  * How far below the deepest part the soft catch floor sits.
  *
@@ -77,9 +75,10 @@ export const BASIN_WIDTH = 2;
  * frontier is the corridor the marble falls through after the machine lets go of it,
  * so if the floor sits right under the machine the marble lands almost immediately
  * and there is barely any corridor to build into. At a gap of 2 the record flatlined
- * within a day and 85% of every part placed was pruned as untouched. At 6 the machine
- * keeps growing and pruning falls to 73%. The floor has to leave the marble room to
- * fall through the space the community is about to build in.
+ * within a day; at 6 the machine keeps growing. The floor has to leave the marble
+ * room to fall through the space the community is about to build in.
+ *
+ * Reproduce with `npx tsx tools/season-sim.mts`.
  */
 export const CATCH_FLOOR_GAP = 6;
 
@@ -106,7 +105,13 @@ export const MAX_KEYFRAMES = 240;
 export const DECAY_DOWNVOTE_THRESHOLD = 5;
 /** A part must be at least this old before vote-decay can remove it (ms). */
 export const DECAY_MIN_AGE_MS = 48 * 60 * 60 * 1000;
-/** Untouched for this many consecutive runs (and no net-positive votes) => decay. */
+/**
+ * Untouched for this many consecutive runs => the part dissolves. No exceptions.
+ *
+ * Votes cannot save it. The community can only ever ACCELERATE a removal (see
+ * decay.ts), never veto one, because "nobody decides what stays, the marble does"
+ * has to be true in the code and not just in the pitch.
+ */
 export const DECAY_UNTOUCHED_RUNS = 2;
 
 /**

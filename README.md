@@ -28,7 +28,7 @@ The return reason is a genuine daily cliffhanger, not a notification.
 2. **Then you spend your one part.** You get exactly one part per day. You snap it onto the machine's live *frontier* (the buildable cells just past where the marble currently reaches), argue in the comments about what to build next, and your streak ticks up.
 3. **Tomorrow the marble runs again** through everything, including your part, and everyone comes back to see how far it went.
 
-One marble. One warm hand-made contraption. One shared morning. That 8-second daily descent is the whole game.
+One marble. One warm hand-made contraption. One shared morning. That six-second daily descent is the whole game.
 
 ## Why it's Reddit-y (and not "AI slop")
 
@@ -50,7 +50,8 @@ One marble. One warm hand-made contraption. One shared morning. That 8-second da
 A shared physics machine has two ways to fail. Both are solved by design, not luck.
 
 - **Coordination (chaos and fragility).** Placement is grid-snapped, one part per cell (first commit wins, atomically), one part per user per day, and gated to the marble's live frontier. So hundreds of daily parts become a deliberate 2D contraption, never a chaotic pile and never a one-wide line. A bad part can only *cap distance*, never permanently brick the chain (a soft catch-floor is always maintained below the machine). Dead or downvoted parts decay and free their cell, so the machine self-heals. A part the marble actually used last run can never be voted out.
-- **The frontier is the marble's own fall corridor.** Not a fan of cells below its last contact: the *actual path* it drops through on its way out of the machine, widened by one column each side. This started as an aesthetic choice and turned out to be load-bearing. When the frontier was a wide cone, most legal cells were places the marble would never visit, so most parts were touched by nothing, scored nothing, and dissolved; simulating a season, random players never improved the record **even once in 20 days**. Building where the marble genuinely goes is what makes a part able to matter.
+- **The frontier is the marble's own fall corridor.** Not a fan of cells below its last contact: the *actual path* it drops through on its way out of the machine, widened by one column each side. This started as an aesthetic choice and turned out to be load-bearing. When the frontier was a wide cone, most legal cells were places the marble would never visit, so a part built there was touched by nothing, scored nothing, and dissolved. The game was inviting people to spend their one part a day where it could not possibly matter. Building where the marble genuinely goes is what makes a part able to matter.
+- **The balance claims here are reproducible, not asserted.** `npx tsx tools/season-sim.mts` plays out 20-day seasons with a seeded crowd and prints the record, the frontier size, and how much the marble pruned. It is also the script that caught both of the bugs above: it proves an untouched part cannot move the record, and it is what showed that random players never improved the record once in 20 days under the old cone frontier.
 - **Determinism (cross-device drift).** The marble is simulated **once, on the server**, per daily run, and stored as a compact keyframe path. Every client just replays those keyframes as tweens. There is no client-side physics, so the run is pixel-identical for every player on every device. Cross-device drift is structurally impossible.
 
 ## How it works
@@ -78,7 +79,7 @@ Hono server (Node)
 
 - **Physics:** `matter-js` (the same engine Phaser ships as `Phaser.Physics.Matter`) runs headless in the Devvit Node runtime. A 200-part machine, about 400 bodies and roughly what a full season looks like, simulates in **under 10ms**. That is measured, and a perf test asserts it, so it cannot quietly regress.
 - **Scoring:** REACH is how deep the machine *carried* the marble, which is not the same as how deep the marble ended up. The catch floor always sits below the deepest part, so scoring the marble's final depth would make the record a function of where someone placed a part rather than where the marble went: dropping a part into a far corner the marble never touches would raise the record by ~192px while contributing nothing. So the score stops at the last moment a part still had hold of the marble. **The record can only move when the marble genuinely reaches something new.**
-- **Scoring:** REACH is the marble's max depth. Per-part contribution uses a high-water-mark accumulator, so each part's credit sums *exactly* to REACH even when a bouncer sends the marble upward. That is how the result card can honestly say "your ramp carried it +269 px."
+- **Attribution:** per-part contribution uses a high-water-mark accumulator, so each part's credit sums *exactly* to REACH even when a bouncer sends the marble upward. That is how the result card can honestly say "your ramp carried it +118 px."
 - **Storage:** Redis only. The machine is a sparse hash (`cell → part|orient|owner`), so unbounded depth is free. Atomic claims, the one-part-a-day lock, and the idempotent cron run-lock are all `hSetNX` hashes.
 - **Parts (4, all static bodies so the marble is the only moving object):** Straight Ramp, Curved Chute, Bouncer, Funnel. Each is defined once as physics/draw primitives shared by the server sim and the client renderer, so the collision surface always matches the picture.
 
