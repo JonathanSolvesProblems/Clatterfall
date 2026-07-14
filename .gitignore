@@ -33,3 +33,6 @@ probe.tmp.mjs
 
 # Demo video build artefacts
 *.edit-plan.json
+
+# Devpost feedback survey responses (personal handles + email)
+feedback.md
