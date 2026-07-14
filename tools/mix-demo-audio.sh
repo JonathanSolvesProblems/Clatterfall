@@ -19,30 +19,42 @@ CUT=broll/cut
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-# Rebuild the game audio on the edit's timeline: each segment contributes its clip's
-# audio, from the clip's start, trimmed to exactly the segment's length.
-python - "$PLAN" "$CUT" "$TMP" <<'PY'
+# Rebuild the game audio on the edit's timeline.
+#
+# Only ONE take actually captured the game: the hero run. The browser's audio never
+# unlocked while the others were recorded, so they are digital silence — except
+# 02-place-frontier, which is silent apart from a half-second burst of high-frequency
+# noise at clip-time 6.0s. Lifted with the rest of the bed, that burst becomes the
+# static you hear at 12s in the film. It is not the app; 69% of its energy sits above
+# 5kHz. So the bed is built only from clips known to hold real game sound, and every
+# other segment lays down silence to hold the timeline.
+BED_CLIPS="01-hero-run"
+
+python - "$PLAN" "$CUT" "$TMP" "$BED_CLIPS" <<'PY'
 import json, subprocess, sys
 from pathlib import Path
 plan_p, cut_d, tmp = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
+keep = set(sys.argv[4].split())
 plan = json.loads(plan_p.read_text(encoding="utf-8"))
-parts = []
+parts, used = [], []
 for i, seg in enumerate(plan["segments"]):
     dur = round(seg["end_time"] - seg["start_time"], 3)
     src = cut_d / f"{seg['clip_id']}.mp4"
     out = tmp / f"a{i:02d}.wav"
-    if src.exists():
-        # the clip's own audio, trimmed to the segment
+    if src.exists() and seg["clip_id"] in keep:
+        # the clip's own audio, trimmed to the segment, easing out at the cut
+        fade_out = max(0.0, dur - 0.35)
         subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y","-i",str(src),
-                        "-t",str(dur),"-vn","-ac","2","-ar","48000","-c:a","pcm_s16le",str(out)],check=True)
+                        "-t",str(dur),"-vn","-af",f"afade=t=out:st={fade_out}:d=0.35",
+                        "-ac","2","-ar","48000","-c:a","pcm_s16le",str(out)],check=True)
+        used.append(seg["clip_id"])
     else:
-        # a still (the outro card) has no audio: lay down silence so timing holds
         subprocess.run(["ffmpeg","-hide_banner","-loglevel","error","-y","-f","lavfi",
-                        "-i",f"anullsrc=r=48000:cl=stereo","-t",str(dur),
+                        "-i","anullsrc=r=48000:cl=stereo","-t",str(dur),
                         "-c:a","pcm_s16le",str(out)],check=True)
     parts.append(out)
 (tmp/"list.txt").write_text("".join(f"file '{p.as_posix()}'\n" for p in parts), encoding="utf-8")
-print(f"  game bed: {len(parts)} segments")
+print(f"  game bed: {', '.join(used) or 'none'}  ({len(parts) - len(used)} segments silent)")
 PY
 
 ffmpeg -hide_banner -loglevel error -y -f concat -safe 0 -i "$TMP/list.txt" \

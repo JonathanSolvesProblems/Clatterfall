@@ -44,12 +44,19 @@ drawbox=x=0:y=$((PLATE_Y - 3)):w=1920:h=3:color=${BRASS}:t=fill"
 
 cut() {
   local name="$1" src="$2" in="$3" dur="$4" crop="$5"
+  # The background is FROZEN on the shot's first frame. It used to be a live blurred
+  # copy of the same footage, which meant that whenever the game's camera tracked the
+  # marble down the shaft, the backdrop panned with it — the whole frame moved at once
+  # and the shot read as shaky. Holding it still anchors the frame, so the only thing
+  # moving is the machine.
   ffmpeg -hide_banner -loglevel error -y \
     -ss "$in" -i "$src" -t "$dur" \
     -filter_complex "\
 [0:v]${crop},scale=-2:${SHOT_H}:flags=lanczos,setsar=1[fg];\
-[0:v]${crop},scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,gblur=sigma=32,eq=brightness=-0.05:saturation=0.85[bg];\
-[bg][fg]overlay=(W-w)/2:${SHOT_Y},${PLATE},format=yuv420p" \
+[0:v]${crop},scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,\
+gblur=sigma=32,eq=brightness=-0.05:saturation=0.85,\
+select='eq(n\,0)',loop=loop=-1:size=1:start=0,fps=30,setsar=1[bg];\
+[bg][fg]overlay=(W-w)/2:${SHOT_Y}:shortest=1,${PLATE},format=yuv420p" \
     -r 30 -c:v libx264 -preset medium -crf 18 \
     -c:a aac -b:a 192k -ac 2 \
     "$OUT/$name.mp4"
