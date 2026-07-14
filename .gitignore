@@ -13,6 +13,13 @@ submission.md
 # Demo video shooting script + b-roll list (working doc)
 demoscript.md
 
+# Raw demo footage and voiceover takes. Big, personal, and not part of the app.
+broll/
+*.mp4
+*.mov
+*.wav
+*.m4a
+
 # Editor / IDE
 .idea/
 .vscode/*
