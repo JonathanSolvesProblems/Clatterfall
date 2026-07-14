@@ -32,4 +32,4 @@ tools/_*
 probe.tmp.mjs
 
 # Demo video build artefacts
-demo.edit-plan.json
+*.edit-plan.json

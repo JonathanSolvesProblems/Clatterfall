@@ -7,15 +7,15 @@
 # ducks it under the voice with a sidechain compressor: you hear the machine
 # throughout, and it steps back automatically whenever he speaks.
 #
-#   bash tools/mix-demo-audio.sh <silent_render.mp4> <narration.wav> <out.mp4>
+#   bash tools/mix-demo-audio.sh <silent_render.mp4> <narration.wav> <out.mp4> [plan] [clips_dir]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 VID="${1:-demo.raw.mp4}"
 VO="${2:-broll/vo-final.wav}"
 OUT="${3:-demo.mp4}"
-PLAN=demo.edit-plan.json
-CUT=broll/cut
+PLAN="${4:-demo.edit-plan.json}"
+CUT="${5:-broll/cut}"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
