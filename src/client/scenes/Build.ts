@@ -32,6 +32,7 @@ export class Build extends Scene {
   private orientIdx = 0;
   private placing = false;
   private hinting = false;
+  private rotateHintShown = false;
   private serverOffset = 0;
   private lastCta = '';
   private panActive = false;
@@ -52,6 +53,7 @@ export class Build extends Scene {
     this.orientIdx = 0;
     this.placing = false;
     this.hinting = false;
+    this.rotateHintShown = false;
     this.panActive = false;
     this.dragging = false;
     this.lastCta = '';
@@ -297,11 +299,21 @@ export class Build extends Scene {
     // Building: tap a glowing frontier cell to select / rotate.
     const canBuild = !this.state.user.placedToday && !this.state.hasNewRunForUser;
     if (canBuild && this.frontierSet.has(id)) {
+      const orients = PARTS[this.selectedPart].orientations.length;
       if (this.selectedCell && this.selectedCell.c === c && this.selectedCell.r === r) {
-        this.orientIdx = (this.orientIdx + 1) % PARTS[this.selectedPart].orientations.length;
+        this.orientIdx = (this.orientIdx + 1) % orients;
+        this.synth.tick();
       } else {
         this.selectedCell = { c, r };
         this.showPalette(true);
+        // Rotation is invisible: nothing on screen says it exists, and you would only
+        // find it by tapping the same cell twice by accident. Since your part is
+        // orientation-sensitive and you only get one a day, that is a bad thing to
+        // leave people to discover. Say it once, when it first becomes relevant.
+        if (orients > 1 && !this.rotateHintShown) {
+          this.rotateHintShown = true;
+          this.toast('Tap the cell again to rotate');
+        }
       }
       this.redrawGhost();
       this.refreshHud();

@@ -81,6 +81,13 @@ export class Synth {
     this.tone(90, 0.12, 'sine', 0.14);
   }
 
+  /** A light wooden click as a part swings to its next orientation. Deliberately
+   *  much softer than place(): rotating is browsing, placing is committing. */
+  tick(): void {
+    this.noise(0.02, 0.06);
+    this.tone(420, 0.05, 'triangle', 0.05);
+  }
+
   milestone(): void {
     this.tone(660, 0.25, 'sine', 0.14);
   }
