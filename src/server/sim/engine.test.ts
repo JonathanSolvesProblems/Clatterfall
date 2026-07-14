@@ -17,14 +17,21 @@ function sum(contrib: Record<string, number>): number {
 }
 
 describe('simulate: headless matter-js (M0 load-bearing)', () => {
-  it('runs an empty machine to the catch floor with a defined escape', () => {
+  it('scores an empty machine ZERO: it carried the marble nowhere', () => {
     const res = simulate([], 0);
-    expect(res.keyframes.length).toBeGreaterThan(2);
-    expect(res.reach).toBeGreaterThan(0);
-    expect(res.escape).toEqual({ c: DROPPER_CELL.c, r: DROPPER_CELL.r });
-    // Nothing was touched, so all depth is unowned free-fall.
+    expect(res.keyframes.length).toBeGreaterThan(2); // the marble still falls and rests
+
+    // REACH is how deep the MACHINE carried the marble, not how deep the marble
+    // ended up. An empty shaft carries it nowhere, however far it drops. Scoring the
+    // marble's final depth instead would make reach a function of where the catch
+    // floor happens to be, which is what let an untouched part in a far corner raise
+    // the record by 192px while contributing nothing.
+    expect(res.reach).toBe(0);
+    expect(sum(res.contributions)).toBe(0);
     expect(res.cappingCell).toBe('');
-    expect(sum(res.contributions)).toBe(res.reach);
+
+    // The board must still be buildable: the escape falls back to the dropper.
+    expect(res.escape).toEqual({ c: DROPPER_CELL.c, r: DROPPER_CELL.r });
   });
 
   it('runs a real machine, attributes contributions that sum to REACH', () => {

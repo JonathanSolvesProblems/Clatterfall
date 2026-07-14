@@ -21,7 +21,7 @@ export class Run extends Scene {
   private synth!: Synth;
   private marbleG!: Phaser.GameObjects.Graphics;
   private fxG!: Phaser.GameObjects.Graphics;
-  private recordLineG?: Phaser.GameObjects.Graphics;
+  private recordLineG: Phaser.GameObjects.Graphics | undefined;
 
   private kfs: Keyframe[] = [];
   private evts: CollisionEvent[] = [];

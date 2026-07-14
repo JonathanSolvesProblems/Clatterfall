@@ -46,7 +46,7 @@ export async function buildState(
   let frontierCells = frontier;
   if (frontierCells.length === 0 && machine.cells.length > 0) {
     const sim = simulate(machine.cells, machine.deepestRow);
-    frontierCells = await computeAndStoreFrontier(sim.escape, machine.cells);
+    frontierCells = await computeAndStoreFrontier(sim.escape, machine.cells, sim.fallPath);
   }
 
   const latestRun = latestRunDate ? await getRun(latestRunDate) : null;

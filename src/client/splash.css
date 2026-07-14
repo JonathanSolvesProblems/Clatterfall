@@ -34,8 +34,92 @@ body {
 
 .motif {
   width: 104px;
-  height: 104px;
+  height: 108px;
   filter: drop-shadow(2px 4px 3px rgba(46, 42, 36, 0.18));
+}
+
+/* The feed card is the one surface every visitor sees, and it had no motion at all:
+   the mechanic existed only as a paragraph you had to stop and read. So the marble
+   actually runs the machine here, on a loop. It takes ~2 seconds and no reading. */
+.ramp {
+  fill: #c99a5b;
+}
+
+.pip {
+  animation: pip-run 3.6s cubic-bezier(0.5, 0, 0.75, 0) infinite;
+}
+
+/* Each ramp lights up at the moment the marble reaches it. */
+.r1 {
+  animation: ramp-hit 3.6s linear infinite;
+  animation-delay: 0.5s;
+}
+.r2 {
+  animation: ramp-hit 3.6s linear infinite;
+  animation-delay: 1.66s;
+}
+.r3 {
+  animation: ramp-hit 3.6s linear infinite;
+  animation-delay: 2.81s;
+}
+
+@keyframes pip-run {
+  0% {
+    transform: translate(0, -16px);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  /* drop onto the first ramp, then roll down it to the right */
+  14% {
+    transform: translate(-2px, 8px);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.7, 1);
+  }
+  30% {
+    transform: translate(24px, 20px);
+  }
+  /* fall to the second ramp, which tilts the other way, and roll back left */
+  46% {
+    transform: translate(46px, 42px);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.7, 1);
+  }
+  62% {
+    transform: translate(26px, 52px);
+  }
+  /* fall to the third ramp and away out the bottom */
+  78% {
+    transform: translate(4px, 72px);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.7, 1);
+  }
+  92% {
+    transform: translate(36px, 84px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(54px, 102px);
+    opacity: 0;
+  }
+}
+
+@keyframes ramp-hit {
+  0%,
+  100% {
+    fill: #c99a5b;
+  }
+  1% {
+    fill: #efc48b;
+  }
+  9% {
+    fill: #c99a5b;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pip,
+  .ramp {
+    animation: none;
+  }
 }
 
 .title {

@@ -101,7 +101,7 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
   await incrDissolved(dissolved);
 
   // Advance the frontier for the next building day.
-  await computeAndStoreFrontier(sim.escape, cells);
+  await computeAndStoreFrontier(sim.escape, cells, sim.fallPath);
 
   // Scoring & cliffhanger resolution.
   const season = await getSeasonState();

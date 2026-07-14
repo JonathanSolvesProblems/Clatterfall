@@ -22,9 +22,15 @@ fetch('/api/state')
     const mins = Math.floor(remain / 60_000);
     const hh = Math.floor(mins / 60);
     const mm = mins % 60;
-    const deepest = Math.round(s.record).toLocaleString('en-US');
     const builders = s.builders > 0 ? ` · built by ${s.builders} redditor${s.builders > 1 ? 's' : ''}` : '';
-    stat.textContent = `Day ${s.day} · deepest ${deepest}px · next run in ${hh}h ${mm}m${builders}`;
+
+    // Never advertise "deepest 0px" directly under a tagline promising a marble that
+    // runs the machine. A post should always have a run by now (see openMachine), so
+    // this is the belt-and-braces path if one ever failed to store.
+    stat.textContent =
+      s.record > 0
+        ? `Day ${s.day} · deepest ${Math.round(s.record).toLocaleString('en-US')}px · next run in ${hh}h ${mm}m${builders}`
+        : `Day ${s.day} · first run in ${hh}h ${mm}m${builders}`;
 
     // The survival ledger. This is the one line that proves the machine really does
     // prune itself, rather than merely claiming to.

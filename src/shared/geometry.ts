@@ -8,6 +8,7 @@ import {
   CATCH_FLOOR_GAP,
   CELL,
   CONE_BASE_HALF,
+  CORRIDOR_HALF,
   FRONTIER_DEPTH,
   GOAL_INTERVAL,
   GRID_COLS,
@@ -79,6 +80,58 @@ export function coneCells(eC: number, eR: number, occupied: Set<string>): string
     if (cells.length >= MIN_FRONTIER_CELLS) break;
     depth++;
   }
+  return cells;
+}
+
+/**
+ * The buildable cells, restricted to the corridor the marble ACTUALLY falls through
+ * after it leaves the machine.
+ *
+ * The plain cone is a wide fan below the marble's last contact, but the marble drops
+ * in a narrow, nearly vertical corridor. Most cells in the fan are therefore places
+ * the marble will never visit, so a part built there is touched by nothing, scores
+ * nothing, and dissolves. Simulating a season showed the consequence: random players
+ * never improved the record even once in 20 days, and careful players plateaued by
+ * day 8, because the game kept inviting people to build where it could not matter.
+ *
+ * So the frontier is the fall corridor, widened by a column on each side to leave
+ * room for a deliberate deflection. This also makes the rule mean what the game says
+ * it means: you can build where the marble goes.
+ *
+ * `path` is the marble's trajectory after its final contact, in logical px.
+ * Falls back to the plain cone if there is no usable path (e.g. the very first run).
+ */
+export function frontierFromPath(
+  path: { x: number; y: number }[],
+  eC: number,
+  eR: number,
+  occupied: Set<string>
+): string[] {
+  const corridor = new Set<number>();
+  const rows = new Map<number, Set<number>>();
+  for (const p of path) {
+    const c = colOfX(p.x);
+    const r = rowOfY(p.y);
+    if (r < MIN_BUILD_ROW || r <= eR || r - eR > FRONTIER_DEPTH) continue;
+    if (!rows.has(r)) rows.set(r, new Set());
+    for (let d = -CORRIDOR_HALF; d <= CORRIDOR_HALF; d++) {
+      const cc = c + d;
+      if (inBounds(cc)) rows.get(r)?.add(cc);
+    }
+    corridor.add(r);
+  }
+
+  const cells: string[] = [];
+  for (const r of [...corridor].sort((a, b) => a - b)) {
+    for (const c of [...(rows.get(r) ?? [])].sort((a, b) => a - b)) {
+      const id = cellId(c, r);
+      if (!occupied.has(id)) cells.push(id);
+    }
+  }
+
+  // Too few to be a real choice (a jam, or the marble came to rest immediately):
+  // fall back to the cone so the board is never unbuildable.
+  if (cells.length < MIN_FRONTIER_CELLS) return coneCells(eC, eR, occupied);
   return cells;
 }
 

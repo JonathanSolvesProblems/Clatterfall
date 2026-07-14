@@ -40,10 +40,8 @@ export async function evaluateDecay(
     if (voteDecay || untouchedDecay) remove.push(id);
   }
 
-  if (remove.length) {
-    await removeCells(remove);
-    await redis.del(...remove.map((id) => K.votes(id)));
-    await redis.del(...remove.map((id) => K.voters(id)));
-  }
+  // removeCells clears each cell's vote/voter state as part of the removal, so a
+  // future part built on the same coordinates never inherits a dead part's votes.
+  await removeCells(remove);
   return remove;
 }

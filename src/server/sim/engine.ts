@@ -34,6 +34,12 @@ export type SimResult = {
   reach: number; // logical px depth
   contributions: Record<string, number>; // cellId ('' = unowned free-fall) -> +px
   escape: { c: number; r: number };
+  /**
+   * The marble's trajectory AFTER its final contact with a part: the corridor it
+   * falls through on its way out of the machine. This is what tomorrow's frontier is
+   * built from, so that people can only build where the marble genuinely goes.
+   */
+  fallPath: { x: number; y: number }[];
   cappingCell: string;
   /**
    * The cell the marble got JAMMED on: it came to rest on this part instead of
@@ -76,7 +82,13 @@ export function simulate(cells: Cell[], deepestRow: number): SimResult {
   let lastTouch = ''; // cellId of the last part touched ('' before first contact)
   let lastContact = { x: DROPPER_X, y: 0 }; // dropper lip is the day-1 escape anchor
   let collidedThisStep = false;
+  let touchingThisStep = false;
   let maxDepth = 0;
+  // The score. See the note on `reach` below: this is the depth the MACHINE got the
+  // marble to, which is not the same as the depth the marble ended up at.
+  let carriedDepth = 0;
+  // The corridor the marble falls through once the machine has let go of it.
+  const fallPath: { x: number; y: number }[] = [];
 
   Events.on(engine, 'collisionStart', (evt: Matter.IEventCollision<Matter.Engine>) => {
     for (const pair of evt.pairs) {
@@ -89,8 +101,21 @@ export function simulate(cells: Cell[], deepestRow: number): SimResult {
       lastTouch = cellLabel;
       lastContact = { x: marble.position.x, y: marble.position.y };
       collidedThisStep = true;
+      touchingThisStep = true;
       const speed = Math.hypot(marble.velocity.x, marble.velocity.y);
       events.push({ cell: cellLabel, part: info.part, material: info.material, t: simTimeMs, v: Math.round(speed * 100) / 100 });
+    }
+  });
+
+  // Rolling along a ramp fires collisionStart only once, at the top. We need to
+  // know the marble is still ON a part while it rolls deeper, so track the ongoing
+  // contact too.
+  Events.on(engine, 'collisionActive', (evt: Matter.IEventCollision<Matter.Engine>) => {
+    for (const pair of evt.pairs) {
+      const la = pair.bodyA.label;
+      const lb = pair.bodyB.label;
+      const cellLabel = la === 'marble' ? lb : lb === 'marble' ? la : '';
+      if (cellLabel && partAt.has(cellLabel)) touchingThisStep = true;
     }
   });
 
@@ -121,12 +146,24 @@ export function simulate(cells: Cell[], deepestRow: number): SimResult {
       maxDepth = depth;
     }
 
+    // Remember how deep the marble had got the last time a part still had hold of
+    // it. Everything after the final contact is the marble falling out the bottom of
+    // the machine, and the machine does not get credit for that.
+    if (touchingThisStep) {
+      carriedDepth = maxDepth;
+      fallPath.length = 0; // still in the machine; the fall out of it starts later
+    } else if (lastTouch !== '') {
+      // Sampled every step, so the corridor never skips a row even in fast freefall.
+      fallPath.push({ x: marble.position.x, y: marble.position.y });
+    }
+
     const emit = collidedThisStep || simTimeMs - lastKfTime >= KEYFRAME_FREEFALL_MS;
     if (emit && keyframes.length < MAX_KEYFRAMES) {
       pushKeyframe();
       lastKfTime = simTimeMs;
     }
     collidedThisStep = false;
+    touchingThisStep = false;
 
     const speed = Math.hypot(marble.velocity.x, marble.velocity.y);
     restCounter = speed < REST_SPEED ? restCounter + 1 : 0;
@@ -136,7 +173,35 @@ export function simulate(cells: Cell[], deepestRow: number): SimResult {
   // Final keyframe at rest.
   pushKeyframe();
 
-  const reach = Math.max(0, Math.round(maxDepth));
+  /**
+   * REACH is how deep the MACHINE carried the marble, not how deep the marble
+   * ended up.
+   *
+   * These are not the same thing, and the difference is the whole game. The catch
+   * floor always sits a fixed gap below the deepest placed part, so the marble
+   * always falls to it. If reach were simply the marble's final depth, then reach
+   * would be a pure function of the deepest cell anyone had placed in, and dropping
+   * a part into a far corner where the marble can never touch it would still raise
+   * the record. (It did: +192px for a part with 0 contribution.) That would make the
+   * central claim of this game, that the marble decides, quietly false.
+   *
+   * So the score stops at the last moment a part still had hold of the marble.
+   * Everything after that is the marble falling out the bottom of the machine, and
+   * the machine gets no credit for it. The record can now only move when the marble
+   * genuinely reaches something new.
+   */
+  const reach = Math.max(0, Math.round(carriedDepth));
+
+  // Contributions were accrued against maxDepth, so the tail (the final fall out of
+  // the machine, all of which was attributed to the last part touched) has to come
+  // back off, or the credits would no longer sum to reach.
+  const tail = maxDepth - carriedDepth;
+  if (tail > 0 && lastTouch !== '') {
+    contributions[lastTouch] = Math.max(0, (contributions[lastTouch] ?? 0) - tail);
+  }
+  // Freefall before ever touching anything is credited to '' and is not a part.
+  delete contributions[''];
+
   // Round contributions to ints and keep them summing to reach.
   reconcileContributions(contributions, reach);
 
@@ -152,7 +217,7 @@ export function simulate(cells: Cell[], deepestRow: number): SimResult {
   const reachedFloor = marble.position.y >= restingOnFloorY - CELL * 0.5;
   const stuckOn = !reachedFloor && lastTouch !== '' ? lastTouch : '';
 
-  return { keyframes, events, reach, contributions, escape, cappingCell: lastTouch, stuckOn };
+  return { keyframes, events, reach, contributions, escape, fallPath, cappingCell: lastTouch, stuckOn };
 }
 
 /** Round each contribution to an int while preserving sum === reach exactly. */

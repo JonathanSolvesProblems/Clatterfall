@@ -33,6 +33,15 @@ export const FRONTIER_DEPTH = 4;
 /** Cone half-width at the escape row; widens by 1 per row: |c-cE| <= BASE + dr. */
 export const CONE_BASE_HALF = 1;
 /**
+ * How far either side of the marble's actual fall corridor you may build.
+ *
+ * The frontier is the path the marble really takes once it leaves the machine, not
+ * a wide fan of cells it will never visit. One column of slack on each side leaves
+ * room to deliberately deflect it without letting people build somewhere it cannot
+ * reach (a part the marble never touches earns nothing and dissolves).
+ */
+export const CORRIDOR_HALF = 1;
+/**
  * The dropper row is never buildable. Pip needs clear air to fall into, and a
  * part placed directly under the spawn point could otherwise catch him at rest
  * before he ever gets moving.
@@ -45,14 +54,34 @@ export const MIN_FRONTIER_CELLS = 6;
 /** Rows between checkpoint basins. */
 export const GOAL_INTERVAL = 40;
 /** Season 1 goal depth, in rows (= 5,120 logical px). */
-export const SEASON1_GOAL_ROW = 80;
+/**
+ * Season 1's goal depth.
+ *
+ * Row 80 was set back when reach was inflated by the catch floor, which moved down
+ * every time anyone placed a deeper part. Now that reach is what the machine actually
+ * carried the marble, a simulated 30-day season with a six-person cohort lands around
+ * row 42-46, so row 80 was a goal nobody could ever hit. Row 55 is a stretch that an
+ * active community can actually reach, which is the point of having a goal at all.
+ */
+export const SEASON1_GOAL_ROW = 55;
 /** A season also ends after this many days if the goal is unmet. */
 export const SEASON_DAY_CAP = 30;
 /** A basin spans 2 cells: [side, side+1]. */
 export const BASIN_WIDTH = 2;
 
 /** Rows below the deepest occupied cell where the soft catch-floor sits. */
-export const CATCH_FLOOR_GAP = 2;
+/**
+ * How far below the deepest part the soft catch floor sits.
+ *
+ * This must be at least FRONTIER_DEPTH + 2, and that is not cosmetic. The buildable
+ * frontier is the corridor the marble falls through after the machine lets go of it,
+ * so if the floor sits right under the machine the marble lands almost immediately
+ * and there is barely any corridor to build into. At a gap of 2 the record flatlined
+ * within a day and 85% of every part placed was pruned as untouched. At 6 the machine
+ * keeps growing and pruning falls to 73%. The floor has to leave the marble room to
+ * fall through the space the community is about to build in.
+ */
+export const CATCH_FLOOR_GAP = 6;
 
 // ---- Simulation (server-only values, kept here so tests can share them) -----
 /** Fixed-timestep rate for the authoritative sim. */

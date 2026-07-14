@@ -18,7 +18,7 @@ import { describe, it, expect } from 'vitest';
 import { simulate } from './engine';
 import { starterCells } from '../core/seed';
 import { PARTS, PART_LIST } from '../../shared/parts';
-import { cellId, coneCells, parseCell } from '../../shared/geometry';
+import { cellId, frontierFromPath, parseCell } from '../../shared/geometry';
 import { GRID_COLS, MAX_KEYFRAMES, MIN_BUILD_ROW, MIN_FRONTIER_CELLS } from '../../shared/constants';
 import type { Cell, PartId } from '../../shared/types';
 
@@ -50,9 +50,15 @@ function playOutSeason(seed: number, startCells: Cell[]): void {
 
     // --- invariants on the run itself ---
     expect(Number.isFinite(res.reach)).toBe(true);
-    expect(res.reach).toBeGreaterThan(0); // Pip always travels somewhere
+    // REACH is what the MACHINE carried the marble, so an empty shaft scores 0 no
+    // matter how far the marble drops. What must always hold is that the marble runs.
+    expect(res.reach).toBeGreaterThanOrEqual(0);
     expect(res.keyframes.length).toBeGreaterThan(1);
     expect(res.keyframes.length).toBeLessThanOrEqual(MAX_KEYFRAMES + 2);
+
+    // Credits always sum to exactly the reach, however chaotic the crowd got.
+    const credited = Object.values(res.contributions).reduce((a, b) => a + b, 0);
+    expect(credited).toBe(res.reach);
 
     // Escape point must stay inside the shaft.
     expect(res.escape.c).toBeGreaterThanOrEqual(0);
@@ -71,7 +77,9 @@ function playOutSeason(seed: number, startCells: Cell[]): void {
     }
 
     // --- the game must remain playable: a buildable frontier always exists ---
-    const frontier = coneCells(res.escape.c, res.escape.r, occupied);
+    // Use the frontier the game actually ships (the marble's fall corridor), not the
+    // raw cone, or the fuzz would be testing code nobody runs.
+    const frontier = frontierFromPath(res.fallPath, res.escape.c, res.escape.r, occupied);
     expect(frontier.length).toBeGreaterThanOrEqual(MIN_FRONTIER_CELLS);
     for (const id of frontier) {
       expect(occupied.has(id)).toBe(false);
@@ -94,7 +102,10 @@ function playOutSeason(seed: number, startCells: Cell[]): void {
 
   // Whatever the crowd built, the machine still runs at the end of the season.
   const final = simulate(cells, cells.reduce((m, c) => Math.max(m, c.r), 0));
-  expect(final.reach).toBeGreaterThan(0);
+  expect(final.keyframes.length).toBeGreaterThan(1);
+  expect(Number.isFinite(final.reach)).toBe(true);
+  // Even a random crowd builds SOMETHING the marble touches over a whole season.
+  if (cells.length > 0) expect(final.reach).toBeGreaterThan(0);
   expect(jams).toBeLessThan(DAYS); // jams are the exception, not every single day
 }
 

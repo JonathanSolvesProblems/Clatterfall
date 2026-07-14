@@ -14,7 +14,8 @@ import type { Cell, PartId } from '../../shared/types';
 import { cellId } from '../../shared/geometry';
 import { simulate } from '../sim/engine';
 import { computeAndStoreFrontier } from './frontier';
-import { K, resetLedger, serializeCell, setDeepestRow } from '../redis/schema';
+import { runDaily } from './dailyRun';
+import { K, getLatestRunDate, resetLedger, serializeCell, setDeepestRow } from '../redis/schema';
 
 const HOUSE = 'clatterfall';
 
@@ -60,8 +61,11 @@ export function starterCells(nowMs: number): Cell[] {
 
 /**
  * Write the starter machine, set the deepest-row marker, and compute the opening
- * frontier so the board is playable the instant the post exists (before the
- * first daily cron ever fires).
+ * frontier so the board is playable the instant the post exists (before the first
+ * daily cron ever fires).
+ *
+ * This does NOT run the machine. Callers that create a post must also call
+ * `openMachine()` below, or the post has no stored run and opens dead.
  */
 export async function seedStarterMachine(nowMs: number): Promise<number> {
   const cells = starterCells(nowMs);
@@ -77,6 +81,23 @@ export async function seedStarterMachine(nowMs: number): Promise<number> {
   // invariant from the very first second, not just from the first player's part.
   await resetLedger(cells.length);
   const sim = simulate(cells, deepest);
-  await computeAndStoreFrontier(sim.escape, cells);
+  await computeAndStoreFrontier(sim.escape, cells, sim.fallPath);
   return cells.length;
+}
+
+/**
+ * Make sure a post has a run to show the moment it is opened.
+ *
+ * Without a stored run there is no `run:latest`, so `hasNewRunForUser` is false,
+ * so the Build scene never auto-plays and the depth and record both read 0. Anyone
+ * opening a fresh post (which is exactly what a judge does) would see a static
+ * board of sticks and no marble, for up to 24 hours until the cron first fired.
+ * The whole game would be dormant on the one surface that gets judged.
+ *
+ * Forced, so it takes a monotonic id and can never collide with the dated cron lock.
+ * Idempotent: if a run already exists, this leaves it alone.
+ */
+export async function openMachine(nowMs: number): Promise<void> {
+  if (await getLatestRunDate()) return;
+  await runDaily(nowMs, { force: true });
 }

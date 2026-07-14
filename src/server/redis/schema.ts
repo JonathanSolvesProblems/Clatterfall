@@ -164,18 +164,40 @@ export async function releaseCell(cellId: string): Promise<void> {
   await redis.hDel(K.cells, [cellId]);
 }
 
+/**
+ * Remove parts, and always take their vote state with them.
+ *
+ * Vote state is keyed by COORDINATES, not by part identity. If it outlives the part
+ * it belonged to, the next part built on that cell inherits the dead part's
+ * downvotes and its consecutive-untouched-run counter. That lets a handful of
+ * downvotes dissolve a brand-new part on its first untouched run, bypassing both
+ * the 5-downvote threshold and the 48h age gate at once. It also permanently bars
+ * anyone who voted on the old part from voting on the new one, because the voter
+ * roster uses hSetNX.
+ *
+ * Cleanup lives here rather than at the call sites so no future removal path can
+ * forget it. There were three removal paths and only one of them remembered.
+ */
 export async function removeCells(cellIds: string[]): Promise<void> {
-  if (cellIds.length) await redis.hDel(K.cells, cellIds);
+  if (!cellIds.length) return;
+  await redis.hDel(K.cells, cellIds);
+  await redis.del(...cellIds.map((id) => K.votes(id)));
+  await redis.del(...cellIds.map((id) => K.voters(id)));
 }
 
 export async function cellExists(cellId: string): Promise<boolean> {
   return (await redis.hGet(K.cells, cellId)) !== undefined;
 }
 
-/** Wipe the machine (cells, frontier, pending, deepest) for a clean reseed. */
+/** Wipe the machine for a clean reseed: cells, their vote state, frontier, and the
+ *  stale run pointer (a leftover run:latest would replay against a board that no
+ *  longer exists). */
 export async function resetMachine(): Promise<void> {
+  const ids = Object.keys((await redis.hGetAll(K.cells)) ?? {});
+  await removeCells(ids); // also clears votes/voters for every cell
   await redis.del(K.cells);
   await redis.del(K.frontier);
+  await redis.del(K.runLatest);
   await redis.set(K.pending, '0');
   await redis.set(K.deepest, '0');
 }

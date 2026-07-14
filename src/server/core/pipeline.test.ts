@@ -82,7 +82,21 @@ import { seedStarterMachine } from './seed';
 import { placePart } from './place';
 import { runDaily } from './dailyRun';
 import { evaluateDecay } from './decay';
-import { K, getFrontier, getDeepestRow, getLedger, getSeasonState, initGame, loadMachine } from '../redis/schema';
+import { openMachine } from './seed';
+import { castVote } from '../redis/votes';
+import {
+  K,
+  getFrontier,
+  getDeepestRow,
+  getLatestRunDate,
+  getLedger,
+  getRun,
+  getSeasonState,
+  initGame,
+  loadMachine,
+  removeCells,
+  resetMachine,
+} from '../redis/schema';
 import { parseCell } from '../../shared/geometry';
 import { api } from '../routes/api';
 
@@ -115,6 +129,83 @@ describe('seed', () => {
     const occupied = new Set(cells.map((c) => `${c.c}:${c.r}`));
     for (const id of frontier) expect(occupied.has(id)).toBe(false);
   });
+
+  /**
+   * The cold-open guarantee. Without a stored run there is no run:latest, so
+   * hasNewRunForUser is false, the Build scene never auto-plays, and depth and
+   * record both read 0. A judge opening a fresh post would see a static board of
+   * sticks and no marble until the cron first fired, up to 24 hours later.
+   */
+  it('openMachine leaves a fresh post with a real run to watch, and is idempotent', async () => {
+    await initGame(NOW);
+    await seedStarterMachine(NOW);
+    expect(await getLatestRunDate()).toBeNull(); // seeding alone is not enough
+
+    await openMachine(NOW);
+
+    const date = await getLatestRunDate();
+    expect(date).toBeTruthy();
+    const run = await getRun(date as string);
+    expect(run).toBeTruthy();
+    expect(run?.reach).toBeGreaterThan(0);
+    expect(run?.keyframes.length).toBeGreaterThan(1);
+
+    // Called again (e.g. a second post), it must not clobber the existing run.
+    await openMachine(NOW + 1000);
+    expect(await getLatestRunDate()).toBe(date);
+  });
+});
+
+/**
+ * Vote state is keyed by COORDINATES, not by part. If it outlives the part it
+ * belonged to, the next part built on that cell inherits the dead part's downvotes
+ * AND its consecutive-untouched-run counter, which together defeat both the
+ * 5-downvote threshold and the 48h age gate. A handful of sock accounts could then
+ * dissolve any brand-new part on its first untouched run.
+ */
+describe('vote state never outlives the part it belonged to', () => {
+  it('a part removed by ANY path takes its votes, voters and missed counter with it', async () => {
+    await fresh();
+    const open = (await getFrontier()).map(parseCell);
+    const a = open[0] as { c: number; r: number };
+    const id = `${a.c}:${a.r}`;
+
+    await placePart('alice', { c: a.c, r: a.r, part: 'ramp', orient: 'R' });
+
+    // Bury it: downvotes, a voter roster, and a high untouched-run counter.
+    await castVote(id, -1, 'sock1');
+    await castVote(id, -1, 'sock2');
+    await redis.hSet(K.votes(id), { missed: '9' });
+    expect(await redis.hGetAll(K.votes(id))).not.toEqual({});
+
+    // Remove via the mod/jam path (removeCells), NOT the decay path.
+    await removeCells([id]);
+
+    // Every trace must be gone, or the next part here starts pre-condemned.
+    expect(await redis.hGetAll(K.votes(id))).toEqual({});
+    expect(await redis.hGetAll(K.voters(id))).toEqual({});
+
+    // And a voter on the dead part can vote again on the new one (hSetNX roster).
+    const counts = await castVote(id, 1, 'sock1');
+    expect(counts.applied).toBe(true);
+    expect(counts.up).toBe(1);
+    expect(counts.down).toBe(0);
+  });
+
+  it('a reseed does not leave stale votes behind for the new machine to inherit', async () => {
+    await fresh();
+    const open = (await getFrontier()).map(parseCell);
+    const a = open[0] as { c: number; r: number };
+    const id = `${a.c}:${a.r}`;
+    await placePart('alice', { c: a.c, r: a.r, part: 'ramp', orient: 'R' });
+    await castVote(id, -1, 'sock1');
+    await redis.hSet(K.votes(id), { missed: '9' });
+
+    await resetMachine();
+
+    expect(await redis.hGetAll(K.votes(id))).toEqual({});
+    expect(await redis.hGetAll(K.voters(id))).toEqual({});
+  });
 });
 
 /**
@@ -145,7 +236,7 @@ describe('survival ledger', () => {
         if (!cell) continue;
         await placePart(u, { c: cell.c, r: cell.r, part: 'ramp', orient: 'R' });
       }
-      await runDaily(at, true);
+      await runDaily(at, { force: true });
 
       const { cells } = await loadMachine();
       const led = await getLedger();

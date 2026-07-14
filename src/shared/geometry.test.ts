@@ -10,7 +10,16 @@ import {
   seasonGoalPx,
   seasonGoalRow,
 } from './geometry';
-import { CONE_BASE_HALF, GRID_COLS, MIN_FRONTIER_CELLS } from './constants';
+import {
+  CATCH_FLOOR_GAP,
+  CELL,
+  CONE_BASE_HALF,
+  FRONTIER_DEPTH,
+  GOAL_INTERVAL,
+  GRID_COLS,
+  MIN_FRONTIER_CELLS,
+  SEASON1_GOAL_ROW,
+} from './constants';
 
 describe('cell id round-trip', () => {
   it('parses what it serializes', () => {
@@ -72,17 +81,27 @@ describe('coneCells', () => {
 });
 
 describe('catch floor', () => {
-  it('sits below the machine, never above row 2', () => {
-    expect(catchFloorRow(0)).toBe(2);
-    expect(catchFloorRow(50)).toBe(52);
+  it('sits a full frontier depth below the machine, so there is room to build', () => {
+    expect(catchFloorRow(0)).toBe(CATCH_FLOOR_GAP);
+    expect(catchFloorRow(50)).toBe(50 + CATCH_FLOOR_GAP);
+  });
+
+  /**
+   * The frontier is the corridor the marble falls through after the machine lets go
+   * of it. If the floor sat right under the machine, that corridor would be a row or
+   * two tall and there would be nowhere meaningful to build: simulating a season with
+   * a gap of 2 flatlined the record within a day and pruned 85% of everything placed.
+   */
+  it('leaves room for the whole buildable frontier beneath the machine', () => {
+    expect(CATCH_FLOOR_GAP).toBeGreaterThanOrEqual(FRONTIER_DEPTH + 2);
   });
 });
 
 describe('seasons and basins', () => {
   it('deepens the goal each season', () => {
-    expect(seasonGoalRow(1)).toBe(80);
-    expect(seasonGoalRow(2)).toBe(120);
-    expect(seasonGoalPx(1)).toBe(80 * 64);
+    expect(seasonGoalRow(1)).toBe(SEASON1_GOAL_ROW);
+    expect(seasonGoalRow(2)).toBe(SEASON1_GOAL_ROW + GOAL_INTERVAL);
+    expect(seasonGoalPx(1)).toBe(SEASON1_GOAL_ROW * CELL);
   });
   it('alternates basin sides', () => {
     expect(basinSideCol(40)).toBe(1); // left

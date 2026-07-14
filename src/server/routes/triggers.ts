@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import type { TriggerResponse } from '@devvit/web/shared';
 import { context } from '@devvit/web/server';
 import { createPost } from '../core/post';
-import { seedStarterMachine } from '../core/seed';
+import { openMachine, seedStarterMachine } from '../core/seed';
 import { initGame, loadMachine } from '../redis/schema';
 
 export const triggers = new Hono();
@@ -14,6 +14,9 @@ triggers.post('/on-app-install', async (c) => {
     await initGame(now);
     const { cells } = await loadMachine();
     if (cells.length === 0) await seedStarterMachine(now);
+    // Run it once, so the post opens on a marble threading the machine rather than
+    // a static board with a depth of 0. Idempotent if a run already exists.
+    await openMachine(now);
     const post = await createPost();
     return c.json<TriggerResponse>(
       { status: 'success', message: `Clatterfall installed in r/${context.subredditName}, post ${post.id}` },
