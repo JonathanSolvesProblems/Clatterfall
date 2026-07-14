@@ -31,6 +31,7 @@ export class Build extends Scene {
   private selectedPart: PartId = 'ramp';
   private orientIdx = 0;
   private placing = false;
+  private hinting = false;
   private serverOffset = 0;
   private lastCta = '';
   private panActive = false;
@@ -50,6 +51,7 @@ export class Build extends Scene {
     this.selectedPart = 'ramp';
     this.orientIdx = 0;
     this.placing = false;
+    this.hinting = false;
     this.panActive = false;
     this.dragging = false;
     this.lastCta = '';
@@ -131,6 +133,39 @@ export class Build extends Scene {
     const bottomFit = h - BOTTOM_UI - (botRow + 1) * CELL * zoom;
     const topFit = TOP_UI - topRow * CELL * zoom;
     this.board.setLayerY(Math.max(bottomFit, topFit));
+  }
+
+  /**
+   * Answer for someone who pressed "Tap a glowing cell to build".
+   *
+   * That CTA looks like a button, so people press it, and until now pressing it did
+   * nothing at all: a dead end on the one action the whole game is built around. Now
+   * it pans to the buildable cells and flares them, so the press teaches you where to
+   * go instead of leaving you stuck.
+   */
+  private hintFrontier(): void {
+    if (this.hinting || this.placing) return;
+    this.hinting = true;
+    this.synth.unlock();
+
+    this.focusBoard(); // make sure the cells are actually on screen before flaring them
+
+    const flare = { v: 1 };
+    this.tweens.add({
+      targets: flare,
+      v: 0.35,
+      duration: 420,
+      ease: 'Sine.inOut',
+      yoyo: true,
+      repeat: 2,
+      onUpdate: () => this.redrawFrontier(flare.v),
+      onComplete: () => {
+        this.redrawFrontier();
+        this.hinting = false;
+      },
+    });
+
+    this.toast('Tap one of the glowing cells');
   }
 
   private layoutPalette(width: number, height: number): void {
@@ -490,7 +525,7 @@ export class Build extends Scene {
     } else if (this.selectedCell) {
       this.setCta(`Place ${PARTS[this.selectedPart].name}`, () => this.doPlace());
     } else {
-      this.setCta('Tap a glowing cell to build', undefined, false);
+      this.setCta('Tap a glowing cell to build', () => this.hintFrontier(), false);
     }
     // "Test run" preview, hidden while mid-placement (so it never covers the palette).
     const canPreview = s.cells.length > 0 && !this.selectedCell;

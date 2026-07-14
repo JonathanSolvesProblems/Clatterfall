@@ -251,7 +251,11 @@ export class Hud {
     // The non-clickable states here are coaching ("Tap a glowing cell") and the
     // countdown, both must stay readable, so use ink rather than disabled grey.
     this.ctaText.setColor(enabled ? css(COLORS.paperHi) : css(COLORS.ink));
-    this.onCta = enabled ? onClick : undefined;
+    // A coaching CTA ("Tap a glowing cell to build") still looks like a button, so
+    // people press it. Keeping the handler even when the button is visually inert
+    // lets it answer that press by pointing at the cells, instead of doing nothing
+    // and leaving the player stuck.
+    this.onCta = onClick;
     this.positionCta();
   }
 
