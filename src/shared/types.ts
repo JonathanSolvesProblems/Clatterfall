@@ -65,6 +65,7 @@ export type CliffhangerState =
   | 'capped' // fell short of the record
   | 'goal' // reached the season goal basin
   | 'quiet' // no new parts today
+  | 'jammed' // the marble came to rest ON a part; it has been cleared
   | 'firstday'; // the very first run
 
 /** A redditor and the px their parts carried the marble on one run. */
@@ -93,5 +94,8 @@ export type RunResult = {
   contributions: Record<string, number>; // cellId -> +px credited
   cappingCell: string; // cellId that capped the run, '' if none
   topContributors: Contributor[]; // who carried the marble furthest today (max 3)
-  dissolved: number; // parts the marble abandoned, removed before this run
+  dissolved: number; // parts the marble ABANDONED (untouched), removed before this run
+  /** The part the marble got STUCK on and which was cleared. Not the same thing as a
+   *  dissolved part: the marble was touching this one, that was the whole problem. */
+  jammedOwner: string; // '' if the run did not jam
 };

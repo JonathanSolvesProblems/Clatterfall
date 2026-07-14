@@ -265,6 +265,9 @@ export class Run extends Scene {
     if (this.preview) this.synth.milestone();
     else if (this.run.state === 'goal') this.synth.goal();
     else if (this.run.state === 'record') this.synth.record();
+    // A jam is a soft wooden thud, not the rising chime you get for a good run. The
+    // marble stopped where it should not have, and the sound should say so.
+    else if (this.run.state === 'jammed') this.synth.hit('wood', 5);
     else this.synth.milestone();
 
     if (!this.preview && (this.run.state === 'record' || this.run.state === 'goal')) this.confetti();
@@ -282,7 +285,9 @@ export class Run extends Scene {
         () => this.done(),
         this.preview,
         this.run.topContributors ?? [],
-        this.run.dissolved ?? 0
+        this.run.dissolved ?? 0,
+        this.run.jammedOwner ?? '',
+        this.state.user.username
       );
     });
   }

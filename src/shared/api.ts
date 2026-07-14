@@ -88,7 +88,8 @@ export type RunResponse = {
   contributions: Record<string, number>;
   cappingCell: string;
   topContributors: Contributor[]; // who carried it furthest today (max 3)
-  dissolved: number; // parts the marble abandoned, removed before this run
+  dissolved: number; // parts the marble ABANDONED, removed before this run
+  jammedOwner: string; // owner of the part the marble got STUCK on ('' if none)
   cells: WireCell[]; // the machine as it stood for this run
 };
 

@@ -64,6 +64,7 @@ api.get('/run/:date', async (c) => {
     // Runs saved before this field existed have no leaderboard; recompute it.
     topContributors: run.topContributors ?? topContributors(asRun, run.contributions),
     dissolved: run.dissolved ?? 0,
+    jammedOwner: run.jammedOwner ?? '',
     cells: asRun.map((m) => ({ c: m.c, r: m.r, part: m.part, orient: m.orient, owner: m.owner })),
   };
   return c.json(payload);
@@ -101,6 +102,7 @@ api.get('/preview', async (c) => {
     cappingCell: state === 'capped' ? sim.cappingCell : '',
     topContributors: topContributors(machine.cells, sim.contributions),
     dissolved: 0, // a preview never dissolves anything: it does not mutate the machine
+    jammedOwner: '', // nor does it clear a jam
     cells: machine.cells.map((m) => ({ c: m.c, r: m.r, part: m.part, orient: m.orient, owner: m.owner })),
   };
   return c.json(payload);

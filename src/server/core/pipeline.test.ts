@@ -99,6 +99,7 @@ import {
 } from '../redis/schema';
 import { parseCell } from '../../shared/geometry';
 import { DECAY_DOWNVOTE_THRESHOLD, DECAY_MIN_AGE_MS } from '../../shared/constants';
+import { PARTS } from '../../shared/parts';
 import { api } from '../routes/api';
 
 const DAY = 86_400_000;
@@ -442,6 +443,54 @@ describe('daily run pipeline', () => {
       expect(c).toBeGreaterThanOrEqual(0);
       expect(c).toBeLessThan(8);
     }
+  });
+});
+
+/**
+ * What a player sees when their one part of the day JAMS the marble.
+ *
+ * This is a real failure path a new player will hit, and it used to be handled
+ * badly: the jammed part was folded in with the parts the marble ABANDONED, so the
+ * card told them "the marble abandoned your part" when in fact the marble was stuck
+ * on it, which is the opposite. Worse, a jam could set a record and then delete the
+ * very part that achieved it, leaving the community chasing a number no machine
+ * could ever reach again.
+ */
+describe('a jam explains itself and never sets a record', () => {
+  it('reports the jam separately from an abandonment, and does not score it', async () => {
+    await fresh();
+    await runDaily(NOW, { force: true }); // opening run: record 1,685
+
+    const before = (await getSeasonState()).record;
+    expect(before).toBeGreaterThan(0);
+
+    // A Straight Ramp at 7:27 in its first orientation is a known jam on the fresh
+    // seed: the marble comes to rest on it instead of reaching the catch floor.
+    const placed = await placePart('unlucky', {
+      c: 7,
+      r: 27,
+      part: 'ramp',
+      orient: PARTS.ramp.orientations[0] as string,
+    });
+    expect(placed.ok).toBe(true); // the cell must actually be buildable, or this tests nothing
+
+    const { result } = await runDaily(NOW + DAY, { force: true });
+    expect(result).toBeTruthy();
+    const run = result as NonNullable<typeof result>;
+
+    // It jammed, and we know exactly whose part it was.
+    expect(run.state).toBe('jammed');
+    expect(run.jammedOwner).toBe('unlucky');
+
+    // It is NOT counted as a part the marble abandoned. That is a different thing.
+    expect(run.dissolved).toBe(0);
+
+    // And it did not set a record it was about to delete.
+    expect((await getSeasonState()).record).toBe(before);
+
+    // The part is gone, so tomorrow's machine runs free.
+    const { cells } = await loadMachine();
+    expect(cells.some((c) => c.c === 7 && c.r === 27)).toBe(false);
   });
 });
 

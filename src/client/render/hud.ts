@@ -290,7 +290,9 @@ export class Hud {
     onClose: () => void,
     preview = false,
     contributors: Contributor[] = [],
-    dissolved = 0
+    dissolved = 0,
+    jammedOwner = '',
+    you = ''
   ): void {
     this.resultCard?.destroy();
     const s = this.scene;
@@ -300,7 +302,46 @@ export class Hud {
     // sum exactly to the reach, so these numbers are literal, not a popularity score.
     const rows = contributors.slice(0, 3);
     const dissolveLine = !preview && dissolved > 0;
-    const extra = (rows.length ? 30 + rows.length * 19 : 0) + (dissolveLine ? 20 : 0);
+    let extra = (rows.length ? 30 + rows.length * 19 : 0) + (dissolveLine ? 20 : 0);
+
+    const head = preview ? { title: 'Preview run', color: COLORS.brassDark } : RESULT_HEAD[state];
+
+    /**
+     * A jam has to explain itself.
+     *
+     * The marble came to rest ON someone's part and the machine cleared it so
+     * tomorrow can run free. If we said nothing, that player would just watch their
+     * one part of the day silently vanish. Name it, say why, and say what happens
+     * next: a jam is the machine defending itself, not the player being punished.
+     */
+    const jammed = !preview && state === 'jammed';
+    const yourJam = jammed && jammedOwner !== '' && jammedOwner === you;
+
+    const subText = preview
+      ? "the real run is tomorrow, with everyone's parts"
+      : yourJam
+        ? 'your part caught the marble. cleared, so it runs free tomorrow'
+        : jammed
+          ? jammedOwner
+            ? `u/${jammedOwner}'s part caught the marble. cleared, so it runs free tomorrow`
+            : 'a part caught the marble. cleared, so it runs free tomorrow'
+          : yourPx > 0
+            ? `your part carried it +${fmt(yourPx)} px`
+            : `record ${fmt(record)} px`;
+
+    // Wrap the sub-line, and grow the card to fit it. The jam copy is a whole
+    // sentence and a username can be any length, so it will not fit on one line.
+    const sub = s.add
+      .text(0, 0, subText, {
+        fontFamily: SANS,
+        fontSize: '14px',
+        color: css(COLORS.ink2),
+        align: 'center',
+        wordWrap: { width: width - 40 },
+      })
+      .setOrigin(0.5);
+    extra += Math.max(0, sub.height - 19);
+
     const height = 150 + extra;
     const top = -height / 2;
 
@@ -310,37 +351,28 @@ export class Hud {
     g.lineStyle(3, COLORS.brass, 1);
     g.strokeRoundedRect(-width / 2, top, width, height, 18);
 
-    const head = preview ? { title: 'Preview run', color: COLORS.brassDark } : RESULT_HEAD[state];
-    const subText = preview
-      ? "the real run is tomorrow, with everyone's parts"
-      : yourPx > 0
-        ? `your part carried it +${fmt(yourPx)} px`
-        : `record ${fmt(record)} px`;
     const headText = s.add
       .text(0, top + 22, head.title, { fontFamily: SERIF, fontSize: '26px', color: css(head.color), fontStyle: 'bold' })
       .setOrigin(0.5);
     const big = s.add.text(0, top + 69, `${fmt(reach)} px deep`, { fontFamily: MONO, fontSize: '24px', color: css(COLORS.ink) }).setOrigin(0.5);
-    const sub = s.add
-      .text(0, top + 101, subText, {
-        fontFamily: SANS,
-        fontSize: '14px',
-        color: css(COLORS.ink2),
-      })
-      .setOrigin(0.5);
+    // How much taller the sub-line got by wrapping. Everything under it slides down
+    // by the same amount, or a two-line jam message runs straight through the divider.
+    const shift = Math.max(0, sub.height - 19);
+    sub.setPosition(0, top + 101 + shift / 2);
     const hint = s.add.text(0, height / 2 - 18, 'tap to continue', { fontFamily: SANS, fontSize: '12px', color: css(COLORS.disabled) }).setOrigin(0.5);
 
     const parts: Phaser.GameObjects.GameObject[] = [g, headText, big, sub, hint];
 
     if (rows.length) {
       g.lineStyle(1, COLORS.brass, 0.35);
-      g.lineBetween(-width / 2 + 18, top + 118, width / 2 - 18, top + 118);
+      g.lineBetween(-width / 2 + 18, top + 118 + shift, width / 2 - 18, top + 118 + shift);
       parts.push(
         s.add
-          .text(0, top + 130, 'who carried it today', { fontFamily: SANS, fontSize: '11px', color: css(COLORS.disabled) })
+          .text(0, top + 130 + shift, 'who carried it today', { fontFamily: SANS, fontSize: '11px', color: css(COLORS.disabled) })
           .setOrigin(0.5)
       );
       rows.forEach((row, i) => {
-        const y = top + 148 + i * 19;
+        const y = top + 148 + shift + i * 19;
         g.fillStyle(i === 0 ? COLORS.brassHi : COLORS.brass, i === 0 ? 1 : 0.5);
         g.fillCircle(-width / 2 + 30, y, i === 0 ? 4 : 3);
         parts.push(
@@ -401,5 +433,7 @@ const RESULT_HEAD: Record<CliffhangerState, { title: string; color: number }> = 
   capped: { title: 'Capped short', color: COLORS.ink2 },
   goal: { title: 'GOAL REACHED!', color: COLORS.goalReady },
   quiet: { title: 'The machine rested', color: COLORS.ink2 },
+  // Not "you broke it". The machine caught itself, and it says so.
+  jammed: { title: 'The marble got stuck', color: COLORS.brassDark },
   firstday: { title: 'The first run', color: COLORS.brassDark },
 };

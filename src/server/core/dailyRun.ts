@@ -74,7 +74,7 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
     const rm = new Set(removed);
     cells = cells.filter((c) => !rm.has(cellId(c.c, c.r)));
   }
-  let dissolved = removed.length;
+  const dissolved = removed.length;
   const deepest = cells.reduce((m, c) => Math.max(m, c.r), 0);
   await setDeepestRow(deepest);
 
@@ -91,14 +91,21 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
   // run dissolves it. Players still watch today's jam (it is the cliffhanger),
   // and tomorrow the machine runs clear. This is what makes "a bad part can only
   // cap distance, never brick the machine" actually true.
+  // A JAM is not an abandonment. The marble was touching this part, that was the
+  // problem. Keeping the two separate matters: the result card tells the player what
+  // actually happened to their part, and "the marble abandoned it" is the opposite
+  // of the truth here.
+  let jammedOwner = '';
   if (sim.stuckOn) {
+    const stuck = cells.find((c) => cellId(c.c, c.r) === sim.stuckOn);
+    jammedOwner = stuck?.owner ?? '';
     await removeCells([sim.stuckOn]);
     cells = cells.filter((c) => cellId(c.c, c.r) !== sim.stuckOn);
     await setDeepestRow(cells.reduce((m, c) => Math.max(m, c.r), 0));
-    dissolved += 1;
-    console.log(`[Clatterfall] dissolved jamming part at ${sim.stuckOn}`);
+    console.log(`[Clatterfall] cleared jamming part at ${sim.stuckOn} (${jammedOwner})`);
   }
-  await incrDissolved(dissolved);
+  // Both leave the machine, so both count against the ledger.
+  await incrDissolved(dissolved + (sim.stuckOn ? 1 : 0));
 
   // Advance the frontier for the next building day.
   await computeAndStoreFrontier(sim.escape, cells, sim.fallPath);
@@ -108,14 +115,26 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
   const prevRecord = season.record;
   const goal = season.goal;
   const reach = sim.reach;
+
+  /**
+   * A jammed run never sets a record.
+   *
+   * On a jam, the marble comes to rest ON a part, and that part is then cleared so
+   * tomorrow's machine can run free. If the depth it reached while stuck counted as a
+   * record, the community would be left chasing a number produced by a part that no
+   * longer exists, on a machine that can no longer reach it. The run did not complete;
+   * it does not score.
+   */
+  const jammed = sim.stuckOn !== '';
   let record = prevRecord;
-  if (reach > prevRecord) {
+  if (!jammed && reach > prevRecord) {
     record = reach;
     await setRecord(season.season, reach);
   }
 
   let state: CliffhangerState;
   if (quiet) state = 'quiet';
+  else if (jammed) state = 'jammed';
   else if (firstRun) state = 'firstday';
   else if (reach >= goal) state = 'goal';
   else if (reach > prevRecord) state = 'record';
@@ -158,6 +177,7 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
     cappingCell: state === 'capped' ? sim.cappingCell : '',
     topContributors: leaders,
     dissolved,
+    jammedOwner,
   };
   await saveRun(result); // completion sentinel, written last
 
