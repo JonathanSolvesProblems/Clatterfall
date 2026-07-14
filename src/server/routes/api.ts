@@ -40,6 +40,12 @@ api.get('/run/:date', async (c) => {
   if (!run) return c.json<ErrorResponse>({ status: 'error', message: 'run not found' }, 404);
 
   const machine = await loadMachine();
+
+  // Draw the machine AS IT WAS when this run was simulated. Parts placed since are
+  // pending: they were not in the simulation, so if we drew them the marble would
+  // visibly pass straight through them and the replay would look broken.
+  const asRun = run.at ? machine.cells.filter((m) => m.placedAt <= run.at) : machine.cells;
+
   const payload: RunResponse = {
     type: 'run',
     date: run.date,
@@ -56,9 +62,9 @@ api.get('/run/:date', async (c) => {
     contributions: run.contributions,
     cappingCell: run.cappingCell,
     // Runs saved before this field existed have no leaderboard; recompute it.
-    topContributors: run.topContributors ?? topContributors(machine.cells, run.contributions),
+    topContributors: run.topContributors ?? topContributors(asRun, run.contributions),
     dissolved: run.dissolved ?? 0,
-    cells: machine.cells.map((m) => ({ c: m.c, r: m.r, part: m.part, orient: m.orient, owner: m.owner })),
+    cells: asRun.map((m) => ({ c: m.c, r: m.r, part: m.part, orient: m.orient, owner: m.owner })),
   };
   return c.json(payload);
 });

@@ -76,6 +76,9 @@ export type Contributor = {
 /** The authoritative result of one daily run. */
 export type RunResult = {
   date: string; // YYYY-MM-DD (UTC)
+  /** When the run was simulated. Parts placed after this were NOT in it, so the
+   *  replay must not draw them: the marble would visibly pass straight through. */
+  at: number;
   season: number;
   day: number; // 1-based day of season
   keyframes: Keyframe[];

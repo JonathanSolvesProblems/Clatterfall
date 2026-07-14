@@ -142,6 +142,7 @@ async function execRun(date: string, nowMs: number): Promise<{ ran: boolean; res
   const day = dayOfSeason(season.seasonStart, nowMs);
   const result: RunResult = {
     date,
+    at: nowMs,
     season: season.season,
     day,
     keyframes: sim.keyframes,
