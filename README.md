@@ -4,6 +4,8 @@
 
 `r/Clatterfall` is one continuous descent, built by a crowd, one part per person per day. Nobody can build it alone. Everybody builds it together, and the machine keeps the parts that earn their place.
 
+**[Watch the 45-second demo](https://www.youtube.com/watch?v=KI0OJ51iiF4)** · **[Play it on r/Clatterfall](https://www.reddit.com/r/Clatterfall/)** · **[App listing](https://developers.reddit.com/apps/clatterfall)**
+
 > **Why I built this.** I collected marbles as a kid and kept a box of them, the kind of small private hoard you take out and admire by yourself. Clatterfall is the inverse of that box. There is one marble, and it belongs to everyone. A whole subreddit builds the machine it runs down, one part a day, and every morning we all watch the same marble together. I wanted to take the thing I loved alone as a kid and turn it into something a community does at the same time.
 
 ---
