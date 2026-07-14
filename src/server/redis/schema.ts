@@ -9,7 +9,7 @@ import { redis } from '@devvit/web/server';
 import type { Cell, RunResult } from '../../shared/types';
 import { isPartId } from '../../shared/parts';
 import { seasonGoalPx } from '../../shared/geometry';
-import { DEFAULT_RUN_HOUR_UTC } from '../../shared/constants';
+import { DEFAULT_RUN_HOUR_UTC, HOUSE_OWNER } from '../../shared/constants';
 
 export const K = {
   cells: 'mach:cells',
@@ -23,6 +23,12 @@ export const K = {
   // Lifetime ledger. placed - dissolved === parts still standing, always.
   totalPlaced: 'mach:placed',
   totalDissolved: 'mach:dissolved',
+  // Everyone who has ever placed a part. Field userId -> '1'. This has to be its own
+  // record rather than a count of the owners currently on the board: a part that the
+  // marble stops touching dissolves, and if we counted the board we would quietly erase
+  // the redditor who placed it. "Built by N redditors" is a claim about who showed up,
+  // not about what survived, so it must only ever go up.
+  builders: 'mach:builders',
   userDays: (date: string) => `ud:${date}`, // field userId -> cellId (atomic day lock)
   user: (id: string) => `user:${id}`,
   votes: (cellId: string) => `votes:${cellId}`,
@@ -209,9 +215,36 @@ export async function claimUserDay(date: string, userId: string, cellId: string)
   const got = await redis.hSetNX(K.userDays(date), userId, cellId);
   if (got === 1) {
     await redis.expire(K.userDays(date), TTL_2D);
+    // The day lock fires exactly once per redditor per day, on their first successful
+    // placement, so it is the honest place to enrol them in the lifetime roster.
+    await redis.hSetNX(K.builders, userId, '1');
     return true;
   }
   return false;
+}
+
+/**
+ * How many redditors have ever placed a part.
+ *
+ * Backfills itself once from the board and from any day locks still inside their 48h
+ * window, so a machine that predates this roster does not start over at zero — and so
+ * a redditor whose part has already dissolved is counted back in rather than erased.
+ */
+export async function builderCount(cells: Cell[], now: number): Promise<number> {
+  const known = await redis.hKeys(K.builders);
+  if (known.length > 0) return known.length;
+
+  const seen = new Set<string>();
+  for (const c of cells) {
+    if (c.owner && c.owner !== HOUSE_OWNER) seen.add(c.owner);
+  }
+  for (const d of [dateStr(now), dateStr(now - 24 * 60 * 60 * 1000)]) {
+    for (const u of await redis.hKeys(K.userDays(d))) {
+      if (u && u !== HOUSE_OWNER) seen.add(u);
+    }
+  }
+  for (const u of seen) await redis.hSetNX(K.builders, u, '1');
+  return seen.size;
 }
 
 export async function releaseUserDay(date: string, userId: string): Promise<void> {
@@ -316,4 +349,8 @@ export async function getLedger(): Promise<{ placed: number; dissolved: number }
 export async function resetLedger(placed: number): Promise<void> {
   await redis.set(K.totalPlaced, String(placed));
   await redis.set(K.totalDissolved, '0');
+  // A reseed throws the machine away, so the roster of who built it goes with it.
+  // Leaving it behind would have a brand new starter machine claim builders who have
+  // no part on it.
+  await redis.del(K.builders);
 }

@@ -83,11 +83,14 @@ import { placePart } from './place';
 import { runDaily } from './dailyRun';
 import { evaluateDecay } from './decay';
 import { openMachine } from './seed';
+import { cellId } from '../../shared/geometry';
 import { castVote } from '../redis/votes';
+import { HOUSE_OWNER } from '../../shared/constants';
 import {
   K,
-  getFrontier,
+  builderCount,
   getDeepestRow,
+  getFrontier,
   getLatestRunDate,
   getLedger,
   getRun,
@@ -576,5 +579,53 @@ describe('decay / self-heal', () => {
     expect(await evaluateDecay([old], new Set(), NOW)).toEqual([]);
     // ...but the marble still gets the final say.
     expect(await evaluateDecay([old], new Set(), NOW)).toEqual([id]);
+  });
+});
+
+/**
+ * "Built by N redditors" is the one adoption number on the feed card, the surface a
+ * judge actually lands on. It used to be computed by counting the distinct owners of
+ * the parts currently STANDING, which meant the machine quietly disowned anybody whose
+ * part the marble stopped touching: the moment their part dissolved, they stopped
+ * having built it. The count could only ever go down. It is a claim about who turned
+ * up, not about what survived, so it is pinned here.
+ */
+describe('the roster of who built it', () => {
+  it('keeps counting a redditor after their part has dissolved', async () => {
+    await fresh();
+
+    // carol places a real part, on the frontier, like anyone else would.
+    const cell = (await getFrontier()).map(parseCell)[0]!;
+    await placePart('carol', { c: cell.c, r: cell.r, part: 'ramp', orient: 'R' });
+    expect(await builderCount((await loadMachine()).cells, NOW)).toBe(1);
+
+    // The marble stops touching it and it dissolves. removeCells is the single path
+    // every dissolution goes through, so taking it here exercises the real thing.
+    await removeCells([cellId(cell.c, cell.r)]);
+
+    const { cells } = await loadMachine();
+    expect(cells.some((c) => c.owner === 'carol')).toBe(false); // her part is gone...
+    expect(await builderCount(cells, NOW)).toBe(1); // ...but she still built it.
+  });
+
+  it('counts each redditor once, however many parts they place', async () => {
+    await fresh();
+    for (let day = 0; day < 3; day++) {
+      const at = NOW + day * 86_400_000;
+      for (const u of ['alice', 'bob']) {
+        const cell = (await getFrontier()).map(parseCell)[0];
+        if (!cell) continue;
+        await placePart(u, { c: cell.c, r: cell.r, part: 'ramp', orient: 'R' });
+      }
+      await runDaily(at, { force: true });
+    }
+    expect(await builderCount((await loadMachine()).cells, NOW)).toBe(2);
+  });
+
+  it('never counts the house account that laid the starter machine', async () => {
+    await fresh();
+    const { cells } = await loadMachine();
+    expect(cells.every((c) => c.owner === HOUSE_OWNER)).toBe(true);
+    expect(await builderCount(cells, NOW)).toBe(0);
   });
 });

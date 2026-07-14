@@ -4,19 +4,7 @@ import { cellId } from '../../shared/geometry';
 import { getUser } from '../redis/users';
 import { simulate } from '../sim/engine';
 import { computeAndStoreFrontier } from './frontier';
-import {
-  dateStr,
-  dayOfSeason,
-  getFrontier,
-  getLatestRunDate,
-  getLedger,
-  getRun,
-  getRunHour,
-  getSeasonState,
-  hasPlacedToday,
-  loadMachine,
-  nextRunAtMs,
-} from '../redis/schema';
+import { builderCount, dateStr, dayOfSeason, getFrontier, getLatestRunDate, getLedger, getRun, getRunHour, getSeasonState, hasPlacedToday, loadMachine, nextRunAtMs } from '../redis/schema';
 
 export async function buildState(
   postId: string,
@@ -51,7 +39,9 @@ export async function buildState(
 
   const latestRun = latestRunDate ? await getRun(latestRunDate) : null;
   const date = dateStr(now);
-  const builders = new Set(machine.cells.map((c) => c.owner).filter((o) => o && o !== 'clatterfall')).size;
+  // Everyone who has ever placed, NOT the owners currently on the board: a dissolved
+  // part must not erase the redditor who placed it.
+  const builders = await builderCount(machine.cells, now);
 
   const userPanel: UserPanel = {
     username,
