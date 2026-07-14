@@ -87,6 +87,8 @@ export function simulate(cells: Cell[], deepestRow: number): SimResult {
   // The score. See the note on `reach` below: this is the depth the MACHINE got the
   // marble to, which is not the same as the depth the marble ended up at.
   let carriedDepth = 0;
+  // Depth banked in mid-air, waiting for whichever part catches him to earn it.
+  let pendingFall = 0;
   // The corridor the marble falls through once the machine has let go of it.
   const fallPath: { x: number; y: number }[] = [];
 
@@ -139,22 +141,41 @@ export function simulate(cells: Cell[], deepestRow: number): SimResult {
     simTimeMs += SIM_DT_MS;
     Engine.update(engine, SIM_DT_MS); // collisionStart may set collidedThisStep
 
-    // High-water-mark depth attribution.
     const depth = marble.position.y;
-    if (depth > maxDepth) {
-      contributions[lastTouch] = (contributions[lastTouch] ?? 0) + (depth - maxDepth);
-      maxDepth = depth;
-    }
+    const gain = depth > maxDepth ? depth - maxDepth : 0;
+    if (gain > 0) maxDepth = depth;
 
-    // Remember how deep the marble had got the last time a part still had hold of
-    // it. Everything after the final contact is the marble falling out the bottom of
-    // the machine, and the machine does not get credit for that.
+    /**
+     * A part is credited with how much deeper it got the marble than the last part
+     * managed, INCLUDING the fall it caught him out of.
+     *
+     * The credit goes to the part that CATCHES the marble, not the one that launched
+     * him. That sounds like a detail and it is not. Because the score now stops at
+     * the marble's last contact, crediting the launcher meant the deepest part, the
+     * one that actually extends the machine and breaks the record, was credited with
+     * almost nothing: a chute that took the record from 1,685 to 1,949 was credited
+     * 11px, while the part above it collected the 253px of fall it had caught him
+     * out of. The part doing the valuable work was the one being paid least.
+     *
+     * "Carried the marble +264px" now means what a player thinks it means: without
+     * your part, the marble would have stopped 264px shallower.
+     */
     if (touchingThisStep) {
+      if (lastTouch !== '') {
+        contributions[lastTouch] = (contributions[lastTouch] ?? 0) + pendingFall + gain;
+      }
+      pendingFall = 0;
       carriedDepth = maxDepth;
       fallPath.length = 0; // still in the machine; the fall out of it starts later
-    } else if (lastTouch !== '') {
-      // Sampled every step, so the corridor never skips a row even in fast freefall.
-      fallPath.push({ x: marble.position.x, y: marble.position.y });
+    } else {
+      // In the air. Hold this depth until a part catches him and earns it. If nothing
+      // ever does, it was the fall out of the bottom of the machine and it counts for
+      // nobody.
+      pendingFall += gain;
+      if (lastTouch !== '') {
+        // Sampled every step, so the corridor never skips a row even in fast freefall.
+        fallPath.push({ x: marble.position.x, y: marble.position.y });
+      }
     }
 
     const emit = collidedThisStep || simTimeMs - lastKfTime >= KEYFRAME_FREEFALL_MS;
@@ -192,17 +213,9 @@ export function simulate(cells: Cell[], deepestRow: number): SimResult {
    */
   const reach = Math.max(0, Math.round(carriedDepth));
 
-  // Contributions were accrued against maxDepth, so the tail (the final fall out of
-  // the machine, all of which was attributed to the last part touched) has to come
-  // back off, or the credits would no longer sum to reach.
-  const tail = maxDepth - carriedDepth;
-  if (tail > 0 && lastTouch !== '') {
-    contributions[lastTouch] = Math.max(0, (contributions[lastTouch] ?? 0) - tail);
-  }
-  // Freefall before ever touching anything is credited to '' and is not a part.
-  delete contributions[''];
-
-  // Round contributions to ints and keep them summing to reach.
+  // `pendingFall` is whatever depth the marble gained after the last part let go of
+  // him. Nothing caught him, so nobody earned it, and it is not part of the score.
+  // The credits therefore already sum to carriedDepth; rounding keeps them exact.
   reconcileContributions(contributions, reach);
 
   const escape =
